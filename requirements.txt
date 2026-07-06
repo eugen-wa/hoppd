@@ -1,0 +1,2 @@
+# Hoppd uses only the Python standard library — no packages needed.
+# This file just tells Render to use the Python runtime.

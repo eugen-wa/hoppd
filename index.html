@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hoppd — Craft Beer Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#120e08; --bg2:#1b150c; --card:#211a0f; --card2:#2b2214;
+    --line:#3a2f1b; --text:#f7efe0; --muted:#c3ac86; --faint:#8a7757;
+    --accent:#f5a623; --accent2:#ffce5c; --amber:#e08e0b;
+    --good:#7bc86c; --warn:#ffb454; --bad:#ff6b6b; --star:#ffc234;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'DM Sans',system-ui,sans-serif;
+    background:radial-gradient(1200px 800px at 82% -12%,#2c2110 0%,var(--bg) 55%);
+    color:var(--text); -webkit-font-smoothing:antialiased; padding:0 0 60px;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:22px 18px}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--amber),var(--accent2));display:grid;place-items:center;box-shadow:var(--shadow);font-size:21px}
+  .brand h1{font-size:21px;font-weight:700;letter-spacing:-.3px}
+  .brand p{font-size:12px;color:var(--muted);margin-top:1px}
+  .ghost{background:var(--card);border:1px solid var(--line);color:var(--muted);padding:9px 13px;border-radius:11px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}
+  .ghost:hover{color:var(--text);border-color:var(--accent)}
+
+  .tabs{display:flex;gap:6px;background:var(--bg2);border:1px solid var(--line);padding:5px;border-radius:14px;margin-bottom:20px}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:10px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;border:none;background:none;font-family:inherit}
+  .tab.active{background:linear-gradient(135deg,var(--amber),var(--accent));color:#241802}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+  .card + .card{margin-top:16px}
+  .card h2{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card h2 .sub{font-size:12px;color:var(--muted);font-weight:500;margin-left:auto}
+
+  /* serving presets */
+  .presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:9px;margin-bottom:16px}
+  .preset{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 6px;text-align:center;cursor:pointer;transition:.15s}
+  .preset:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .preset.sel{border-color:var(--accent);background:linear-gradient(180deg,rgba(245,166,35,.18),transparent)}
+  .preset .emo{font-size:22px;line-height:1}
+  .preset .nm{font-size:12px;font-weight:600;margin-top:5px}
+  .preset .mt{font-size:10.5px;color:var(--muted);margin-top:1px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+  input,select,textarea{width:100%;background:var(--bg2);border:1px solid var(--line);color:var(--text);padding:11px 12px;border-radius:11px;font:inherit;font-size:14px;outline:none;transition:.15s}
+  textarea{resize:vertical;min-height:44px}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  .field{margin-bottom:12px}
+
+  /* range slider */
+  .volhead{display:flex;justify-content:space-between;align-items:baseline}
+  .voledit{display:flex;align-items:center;gap:5px}
+  .voledit input{width:64px;background:transparent;border:1px solid transparent;color:var(--accent);font:inherit;font-size:15px;font-weight:700;text-align:right;padding:3px 5px;border-radius:7px;transition:.15s}
+  .voledit input:hover{border-color:var(--line)}
+  .voledit input:focus{border-color:var(--accent);background:var(--bg2)}
+  .voledit small{color:var(--muted);font-size:12px;font-weight:600}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:8px;padding:0;border:none;border-radius:6px;background:linear-gradient(90deg,var(--amber),var(--accent2)) no-repeat;background-size:var(--pct,16%) 100%;background-color:var(--bg2);cursor:pointer;margin:2px 0 14px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent2);border:3px solid #2a1f0c;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:grab}
+  input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1.1)}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent2);border:3px solid #2a1f0c;cursor:grab}
+  input[type=range]::-moz-range-progress{background:linear-gradient(90deg,var(--amber),var(--accent2));height:8px;border-radius:6px}
+  .ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint);margin:-8px 2px 12px}
+
+  /* when pills */
+  .whenpills{display:flex;flex-wrap:wrap;gap:8px}
+  .wpill{background:var(--bg2);border:1px solid var(--line);color:var(--muted);padding:9px 15px;border-radius:20px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .wpill:hover{border-color:var(--accent);color:var(--text)}
+  .wpill.sel{background:linear-gradient(135deg,var(--amber),var(--accent));color:#241802;border-color:transparent}
+
+  /* beer label photo */
+  .photoAdd{display:flex;align-items:center;justify-content:center;gap:9px;border:1.5px dashed var(--line);border-radius:13px;padding:22px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;transition:.15s}
+  .photoAdd[hidden]{display:none}
+  .photoAdd:hover{border-color:var(--accent);color:var(--text)}
+  .photoAdd .pi{font-size:22px}
+  .photoPreview{position:relative;border-radius:13px;overflow:hidden;border:1px solid var(--line);width:260px;max-width:100%;aspect-ratio:1/1;margin:0}
+  .photoPreview img{display:block;width:100%;height:100%;object-fit:cover}
+  .photoRemove{position:absolute;top:8px;right:8px;background:rgba(18,14,8,.78);border:1px solid var(--line);color:var(--text);padding:6px 11px;border-radius:20px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+  .photoRemove:hover{border-color:var(--bad);color:var(--bad)}
+  .entryPhoto{width:48px;height:48px;border-radius:11px;object-fit:cover;flex-shrink:0}
+  .thumb{width:36px;height:36px;border-radius:9px;object-fit:cover;flex-shrink:0}
+
+  /* hop tags */
+  .hopsbox{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;min-height:22px;transition:.15s}
+  .hopsbox:focus-within{border-color:var(--accent)}
+  .hopchip{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:4px 5px 4px 11px;font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap}
+  .hopchip button{background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;padding:0 4px;line-height:1}
+  .hopchip button:hover{color:var(--bad)}
+  .hopchip.small{padding:2px 4px 2px 9px;font-size:11px;background:var(--bg2)}
+  .hopschips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .hopsbox input{flex:1;min-width:100px;background:none;border:none;padding:4px 2px;font:inherit;font-size:14px;color:var(--text);outline:none}
+
+  /* style tag-picker (dropdown + checkmarks + create-new, permanent tag book) */
+  .tagselect{position:relative}
+  .tagbox{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:0 12px}
+  .tagbox[hidden]{display:none}
+  .tagbox:focus-within{border-color:var(--accent)}
+  .tagbox input{flex:1;background:none;border:none;padding:11px 0;font:inherit;font-size:14px;color:var(--text);outline:none}
+  .tagchevron{color:var(--muted);font-size:11px;pointer-events:none}
+  .tagpanel{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--card2);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);z-index:30;max-height:260px;overflow-y:auto;padding:6px}
+  .tagcreate{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:9px;cursor:pointer;color:var(--accent);font-weight:700;font-size:13.5px}
+  .tagcreate[hidden]{display:none}
+  .tagcreate:hover{background:var(--bg2)}
+  .tagcreateicon{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#241802;display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0}
+  .tagopt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text)}
+  .tagopt:hover{background:var(--bg2)}
+  .tagopt.sel{background:linear-gradient(135deg,var(--amber),var(--accent));color:#241802}
+  .tagopt .ck{width:16px;text-align:center;flex-shrink:0}
+  .tagempty{padding:14px 12px;color:var(--muted);font-size:13px}
+  .tagchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+  .tagchips:empty{margin:0}
+  .tagchip{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:6px 6px 6px 13px;font-size:13px;font-weight:600;color:var(--text)}
+  .tagchip button{background:none;border:none;color:var(--faint);cursor:pointer;font-size:14px;padding:0 4px;line-height:1}
+  .tagchip button:hover{color:var(--bad)}
+
+  /* rating (wider) + cost (narrower) row */
+  .rowRatingCost{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;align-items:start}
+
+  /* star rating input (1–10) */
+  .rate{display:flex;align-items:center;gap:12px;margin:2px 0 14px;flex-wrap:wrap}
+  .stars{display:inline-flex;gap:2px;font-size:31px;line-height:1;cursor:pointer;user-select:none}
+  .stars .st{position:relative;width:31px;color:var(--line)}
+  .stars .st .fill{position:absolute;left:0;top:0;overflow:hidden;color:var(--star);white-space:nowrap;width:0}
+  .rateval{font-size:27px;font-weight:700;color:var(--star)}
+  .rateval small{color:var(--muted);font-size:14px;font-weight:600}
+
+  .calcbox{background:var(--bg2);border:1px dashed var(--line);border-radius:12px;padding:11px 14px;margin:2px 0 14px;display:flex;gap:18px;flex-wrap:wrap}
+  .calcbox div{font-size:12px;color:var(--muted)}
+  .calcbox b{display:block;font-size:18px;color:var(--text);font-weight:700;margin-top:2px}
+  .btn{width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--amber),var(--accent));color:#241802;font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:.15s}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:active{transform:scale(.99)}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 14px;box-shadow:var(--shadow)}
+  .stat .k{font-size:12px;color:var(--muted);font-weight:600}
+  .stat .v{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.5px}
+  .stat .v small{font-size:13px;color:var(--muted);font-weight:600}
+  .stat .d{font-size:11.5px;margin-top:3px;font-weight:600;color:var(--muted)}
+
+  .barwrap{display:flex;align-items:flex-end;gap:8px;height:150px;padding-top:6px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+  .bar{width:76%;max-width:34px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--accent),var(--amber));min-height:3px;transition:.3s}
+  .bar.zero{background:var(--line)}
+  .bar.over{background:linear-gradient(180deg,var(--bad),#ff9a9a)}
+  .bar-lbl{font-size:11px;color:var(--muted);font-weight:600}
+  .bar-val{font-size:10.5px;color:var(--faint);font-weight:600;height:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px}
+  .legend div{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .dot{width:10px;height:10px;border-radius:3px}
+
+  .typerow{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .typerow .nm{width:130px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .track{flex:1;height:9px;background:var(--bg2);border-radius:6px;overflow:hidden}
+  .fill2{height:100%;border-radius:6px;transition:.4s;background:linear-gradient(90deg,var(--amber),var(--accent2))}
+  .typerow .pc{width:58px;text-align:right;font-size:12px;color:var(--muted);font-weight:600}
+
+  /* top beers */
+  .topbeer{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .topbeer:last-child{border-bottom:none}
+  .rank{width:24px;height:24px;border-radius:8px;background:var(--card2);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--accent)}
+  .topbeer .info{flex:1;min-width:0}
+  .topbeer .info b{font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbeer .info p{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ministars{font-size:13px;color:var(--star);white-space:nowrap}
+  .ministars small{color:var(--muted);margin-left:4px}
+
+  /* badges */
+  .badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px}
+  .badge{background:var(--card2);border:1px solid var(--line);border-radius:13px;padding:13px;text-align:center;transition:.15s}
+  .badge.locked{opacity:.4;filter:grayscale(.7)}
+  .badge .bi{font-size:28px}
+  .badge .bn{font-size:12.5px;font-weight:700;margin-top:6px}
+  .badge .bd{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
+  .badge.earned{border-color:var(--accent);box-shadow:0 0 0 1px rgba(245,166,35,.25) inset}
+
+  /* rating histogram */
+  .hist{display:flex;flex-direction:column;gap:7px}
+  .histrow{display:flex;align-items:center;gap:9px;font-size:12px}
+  .histrow .hl{width:34px;color:var(--muted);font-weight:600;text-align:right}
+  .histrow .track{height:14px}
+  .histrow .hf{height:100%;background:linear-gradient(90deg,var(--star),var(--accent2));border-radius:6px}
+  .histrow .hc{width:30px;color:var(--muted);font-weight:600}
+
+  /* check-in feed */
+  .log-day{margin-bottom:16px}
+  .log-day h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;display:flex;justify-content:space-between}
+  .log-day h3 span{color:var(--accent);text-transform:none;letter-spacing:0}
+  .entry{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px;margin-bottom:9px}
+  .entry .emo{font-size:24px;line-height:1.2}
+  .entry .info{flex:1;min-width:0}
+  .entry .info b{font-size:14.5px;font-weight:700}
+  .entry .brew{font-size:12.5px;color:var(--accent);font-weight:600}
+  .entry .meta{font-size:12px;color:var(--muted);margin-top:3px}
+  .entry .notes{font-size:12.5px;color:var(--text);margin-top:6px;background:var(--bg2);border-radius:9px;padding:7px 9px;line-height:1.4}
+  .entry .right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .entry .ministars{font-size:14px}
+  .stylechip{display:inline-block;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--muted);font-weight:600;margin-top:5px}
+  .del{background:none;border:none;color:var(--faint);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:8px}
+  .del:hover{color:var(--bad);background:var(--bg2)}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+  .empty .big{font-size:44px;margin-bottom:10px}
+
+  .goalbar{height:26px;background:var(--bg2);border-radius:9px;overflow:hidden;position:relative;border:1px solid var(--line)}
+  .goalfill{height:100%;border-radius:8px;transition:.4s;background:linear-gradient(90deg,var(--good),#a6e09a)}
+  .goalfill.over{background:linear-gradient(90deg,var(--warn),var(--bad))}
+  .goaltxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);font-weight:600}
+
+  .note{font-size:11.5px;color:var(--faint);margin-top:12px;line-height:1.5}
+  a{color:var(--accent)}
+  datalist{position:absolute}
+  @media(max-width:640px){
+    .stats{grid-template-columns:1fr 1fr}
+    .grid2,.grid3{grid-template-columns:1fr}
+    .brand p{display:none}
+    .typerow .nm{width:96px}
+  }
+</style>
+<style>
+/* ===== Swiss minimal theme (1inch-inspired): white, black pills, blue links ===== */
+:root{
+  --bg:#FFFFFF; --bg2:#F4F4F6; --card:#F5F5F6; --card2:#ECECEF;
+  --line:#E4E4E7; --text:#0B0B0B; --muted:#7E7E88; --faint:#B4B4BC;
+  --accent:#2F5AFF; --accent2:#0B0B0B; --amber:#0B0B0B;
+  --good:#12B76A; --warn:#F79009; --bad:#F04438; --star:#0B0B0B;
+  --shadow:none;
+}
+body{background:#fff;color:var(--text);font-family:'Inter',system-ui,sans-serif;letter-spacing:-.01em;background-image:none}
+.logo{background:#0B0B0B;box-shadow:none;border-radius:14px}
+.brand h1{font-weight:800;font-size:24px;letter-spacing:-.04em}
+.brand p{font-size:12px;color:var(--muted)}
+.ghost{background:#fff;border:1px solid var(--line);border-radius:999px;color:#0B0B0B;font-weight:600}
+.ghost:hover{border-color:#0B0B0B;color:#0B0B0B}
+.tabs{background:#F4F4F6;border:none;border-radius:999px;padding:4px;margin-bottom:22px}
+.tab{border-radius:999px;color:#6E6E78;font-size:13.5px}
+.tab.active{background:#0B0B0B;color:#fff}
+.card{background:var(--card);border:none;border-radius:20px;box-shadow:none}
+.card h2{font-weight:700;font-size:19px;letter-spacing:-.02em}
+#tab-log .card h2{font-weight:700;font-size:24px;letter-spacing:-.03em;margin-bottom:16px}
+.card h2 .sub{font-size:12px;font-weight:500;color:var(--muted)}
+label{font-size:12.5px;font-weight:500;color:#6F6F78;text-transform:none;letter-spacing:0}
+input,select,textarea{background:#fff;border:1px solid var(--line);border-radius:12px}
+input:focus,select:focus,textarea:focus{border-color:#0B0B0B}
+input::placeholder,textarea::placeholder{color:#B4B4BC}
+.tagbox,.hopsbox{background:#fff;border:1px solid var(--line);border-radius:12px}
+.tagbox:focus-within,.hopsbox:focus-within{border-color:#0B0B0B}
+.tagpanel{background:#fff;border:1px solid #ECECEF;border-radius:16px;box-shadow:0 16px 40px rgba(11,11,11,.10)}
+.tagopt.sel{background:#0B0B0B;color:#fff}
+.tagcreate{color:#0B0B0B}
+.tagcreateicon{background:#0B0B0B;color:#fff}
+.tagchip{background:#0B0B0B;border-color:#0B0B0B;color:#fff;border-radius:999px}
+.tagchip button{color:#9B9BA3}
+.hopchip{background:#fff;border:1px solid var(--line);color:#0B0B0B;border-radius:999px}
+.hopchip button{color:#B4B4BC}
+.stylechip{background:#0B0B0B;border-color:#0B0B0B;color:#fff;border-radius:999px}
+.pill{background:#fff;border:1px solid var(--line);border-radius:999px}
+.btn{background:#0B0B0B;color:#fff;border-radius:999px;font-weight:600;font-size:14.5px}
+.btn:hover{filter:none;background:#26262B}
+.wpill{background:#fff;border:1px solid var(--line);border-radius:999px;color:#4A4A52}
+.wpill:hover{border-color:#0B0B0B;color:#0B0B0B}
+.wpill.sel{background:#0B0B0B;color:#fff;border-color:#0B0B0B}
+input[type=range]{background-color:#ECECEF}
+input[type=range]::-webkit-slider-thumb{background:#0B0B0B;border-color:#fff}
+input[type=range]::-moz-range-thumb{background:#0B0B0B;border-color:#fff}
+.voledit input{color:#0B0B0B;font-weight:700}
+.rateval{color:#0B0B0B;font-size:26px}
+.rateval small{color:var(--muted)}
+.calcbox{background:#fff;border:1px dashed #DFDFE3}
+.calcbox div{font-size:12px;color:var(--muted)}
+.calcbox b{font-size:22px;font-weight:600;letter-spacing:-.4px}
+.stat{background:var(--card);border:none;border-radius:20px;box-shadow:none}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:38px;font-weight:800;letter-spacing:-1.5px}
+.stat .v small{font-weight:600}
+.stat .d{font-size:11.5px}
+.rank{background:#0B0B0B;color:#fff;border-radius:999px}
+.entry{background:#fff;border:none;border-radius:16px}
+.notes{background:#F4F4F6}
+.badge{background:#fff;border:1px solid #ECECEF;border-radius:16px}
+.badge.earned{border-color:#0B0B0B;box-shadow:none}
+.goalbar{background:#ECECEF;border:none}
+.goalfill{background:#0B0B0B}
+.goalfill.over{background:#F04438}
+.bar{background:#0B0B0B}
+.bar.zero{background:#E4E4E7}
+.bar.over{background:#F04438}
+.fill2{background:#0B0B0B}
+.histrow .hf{background:#0B0B0B}
+.typerow .track,.histrow .track{background:#ECECEF}
+.barwrap.tall{height:190px}
+.bar-lbl{min-height:15px;line-height:15px}
+#tab-trends .grid2{gap:16px;margin-top:16px}
+#tab-trends .grid2 .card{margin-top:0}
+.photoAdd{border:1.5px dashed #D9D9DE;border-radius:16px;color:var(--muted)}
+.photoAdd:hover{border-color:#0B0B0B;color:#0B0B0B}
+.photoPreview{border-radius:16px;border-color:var(--line)}
+.log-day h3{color:var(--muted)}
+.note{font-size:11.5px;color:var(--faint)}
+#toast{background:#0B0B0B!important;color:#fff!important;border-color:#0B0B0B!important;border-radius:999px!important;font-weight:600!important}
+/* ----- line-icon system ----- */
+svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:middle}
+.tab{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.tab svg.ico{width:16px;height:16px}
+.ghost{display:inline-flex;align-items:center;gap:7px}
+.ghost svg.ico{width:15px;height:15px}
+.logo svg.ico{width:22px;height:22px;stroke:#fff}
+.photoAdd .pi svg.ico{width:20px;height:20px}
+.badge .bi{display:flex;justify-content:center}
+.badge .bi svg.ico{width:26px;height:26px}
+.badge.locked .bi svg.ico{stroke:var(--faint)}
+.pill{display:inline-flex;align-items:center;gap:6px}
+.pill svg.ico{width:15px;height:15px}
+.hopchip svg.ico{width:13px;height:13px;margin-right:1px}
+.empty .big svg.ico{width:40px;height:40px;stroke:var(--muted)}
+.entry .emo svg.ico{width:22px;height:22px;stroke:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">🍺</div>
+      <div>
+        <h1>Hoppd</h1>
+        <p>Your personal craft beer journal — every pour, rated</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="syncDot" style="font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap">○ Offline</span>
+      <button class="ghost" id="exportBtn">⇩ Export</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="log">🍺 Check-in</button>
+    <button class="tab" data-tab="dash">📊 My Profile</button>
+    <button class="tab" data-tab="trends">📈 Trends</button>
+    <button class="tab" data-tab="settings">⚙︎ Settings</button>
+  </div>
+
+  <!-- ============ CHECK-IN ============ -->
+  <section id="tab-log">
+    <div class="card">
+      <h2>Check in a beer <span class="sub">rate what you're drinking</span></h2>
+
+      <div class="grid2">
+        <div class="field">
+          <label>Beer name</label>
+          <input id="f-name" list="dl-beers" placeholder="e.g. Hazy Little Thing">
+          <datalist id="dl-beers"></datalist>
+        </div>
+        <div class="field">
+          <label>Brewery</label>
+          <input id="f-brew" list="dl-brew" placeholder="e.g. Sierra Nevada">
+          <datalist id="dl-brew"></datalist>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Beer label photo <small style="font-weight:400">(optional)</small></label>
+        <div class="photobox">
+          <div class="photoPreview" id="photoPreview" hidden>
+            <img id="photoImg" alt="">
+            <button type="button" class="photoRemove" id="photoRemove">✕ Remove</button>
+          </div>
+          <label class="photoAdd" id="photoAdd" for="f-photo">
+            <span class="pi">📷</span><span>Add a photo</span>
+          </label>
+          <input type="file" id="f-photo" accept="image/*" capture="environment" hidden>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Style</label>
+        <div class="tagselect" id="styleSelect">
+          <div class="tagbox">
+            <input id="f-style" placeholder="Select or create a style" autocomplete="off">
+            <span class="tagchevron">⌄</span>
+          </div>
+          <div class="tagpanel" id="stylePanel" hidden>
+            <div class="tagcreate" id="styleCreateBtn" hidden>
+              <span class="tagcreateicon">+</span><span id="styleCreateLabel">Create new style</span>
+            </div>
+            <div class="tagoptions" id="styleOptions"></div>
+          </div>
+        </div>
+        <div class="tagchips" id="styleChips"></div>
+      </div>
+
+      <div class="field">
+        <label>Hops <small style="font-weight:400">(optional — pick saved ones or create new)</small></label>
+        <div class="tagselect" id="hopSelect">
+          <div class="hopsbox" id="hopBox">
+            <input id="f-hop" placeholder="Select or create hops" autocomplete="off">
+          </div>
+          <div class="tagpanel" id="hopPanel" hidden>
+            <div class="tagcreate" id="hopCreateBtn" hidden>
+              <span class="tagcreateicon">+</span><span id="hopCreateLabel">Create new hop</span>
+            </div>
+            <div class="tagoptions" id="hopOptions"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>ABV %</label>
+          <input id="f-abv" type="number" min="0" max="100" step="0.1" placeholder="6.5">
+        </div>
+        <div class="field">
+          <label>Blg <small style="font-weight:400">(°Plato)</small></label>
+          <input id="f-blg" type="number" min="0" step="0.1" placeholder="12">
+        </div>
+      </div>
+
+      <div class="volhead">
+        <label>Serving size</label>
+        <span class="voledit"><input id="volReadout" type="number" min="0" max="2000" step="10" value="500"><small>ml</small></span>
+      </div>
+      <input id="f-volrange" type="range" min="0" max="2000" step="50" value="500">
+      <div class="ticks"><span>0</span><span>0.5 L</span><span>1 L</span><span>1.5 L</span><span>2 L</span></div>
+
+      <div class="rowRatingCost">
+        <div class="field">
+          <label>Your rating</label>
+          <div class="rate">
+            <div class="stars" id="stars"></div>
+            <div class="rateval"><span id="rateNum">0</span><small> / 10</small></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Cost (optional)</label>
+          <input id="f-cost" type="number" min="0" step="0.5" placeholder="0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tasting notes</label>
+        <textarea id="f-notes" placeholder="Juicy, tropical, soft bitterness, hazy pour…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>When</label>
+        <div class="whenpills" id="whenPills">
+          <button type="button" class="wpill sel" data-days="0">Today</button>
+          <button type="button" class="wpill" data-days="1">Yesterday</button>
+          <button type="button" class="wpill" data-custom="1">Pick a date…</button>
+        </div>
+        <input id="f-when" type="date" hidden style="margin-top:10px">
+      </div>
+
+      <div class="calcbox">
+        <div>Standard drinks<b id="c-sd">0.0</b></div>
+        <div>Pure alcohol<b id="c-g">0 g</b></div>
+        <div>Calories<b id="c-cal">0 kcal</b></div>
+      </div>
+
+      <button class="btn" id="saveBtn">✓ Check in</button>
+      <p class="note">Craft-focused: rate 1–10 (tap a star). Blg = original gravity in °Plato. Standard drink = 14&nbsp;g pure alcohol; grams = volume × ABV × 0.789.</p>
+    </div>
+  </section>
+
+  <!-- ============ PROFILE / DASHBOARD ============ -->
+  <section id="tab-dash" hidden>
+    <div class="stats" id="statTiles"></div>
+
+    <div class="card">
+      <h2>Top rated <span class="sub">your highest-scoring pours</span></h2>
+      <div id="topBeers"></div>
+    </div>
+
+    <div class="card">
+      <h2>Favorite styles <span class="sub">by check-ins</span></h2>
+      <div id="styleBreak"></div>
+    </div>
+
+    <div class="card">
+      <h2>Rating spread <span class="sub">how you score</span></h2>
+      <div class="hist" id="ratingHist"></div>
+    </div>
+
+    <div class="card">
+      <h2>Badges <span class="sub" id="badgeCount"></span></h2>
+      <div class="badges" id="badges"></div>
+    </div>
+
+    <div class="card">
+      <h2>This week's pours <span class="sub" id="weekRange"></span></h2>
+      <div class="barwrap" id="weekBars"></div>
+      <div class="legend">
+        <div><span class="dot" style="background:linear-gradient(180deg,var(--accent),var(--amber))"></span>Standard drinks / day</div>
+        <div><span class="dot" style="background:var(--bad)"></span>Over daily target</div>
+        <div><span class="dot" style="background:var(--line)"></span>Dry day</div>
+      </div>
+      <div class="goalbar" style="margin-top:16px">
+        <div class="goalfill" id="goalFill"></div>
+        <div class="goaltxt" id="goalTxt"></div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+        <span class="pill" id="pillStreak">🔥 0 dry days</span>
+        <span class="pill" id="pillAbv">🌡 0% avg ABV</span>
+        <span class="pill" id="pillSpend">💸 0 total</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRENDS ============ -->
+  <section id="tab-trends" hidden>
+    <div class="stats" id="trendTiles"></div>
+
+    <div class="card">
+      <h2>Consumption over time <span class="sub" id="consumeSub"></span></h2>
+      <div class="barwrap tall" id="weeksBars"></div>
+      <div class="legend">
+        <div><span class="dot" style="background:linear-gradient(180deg,var(--accent),var(--amber))"></span>Standard drinks / week</div>
+        <div><span class="dot" style="background:var(--bad)"></span>Over weekly limit</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Spend by month <span class="sub">last 6 months</span></h2>
+      <div class="barwrap tall" id="spendBars"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>When you drink <span class="sub">by weekday</span></h2>
+        <div id="dowBreak"></div>
+      </div>
+      <div class="card">
+        <h2>Strength <span class="sub">avg ABV / week</span></h2>
+        <div class="barwrap" id="abvBars"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Recent check-ins <span class="sub" id="histCount"></span></h2>
+      <div id="logList"></div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="tab-settings" hidden>
+    <div class="card">
+      <h2>Goals & preferences</h2>
+      <div class="grid2">
+        <div class="field">
+          <label>Weekly limit (standard drinks)</label>
+          <input id="s-weekly" type="number" min="0" step="1">
+        </div>
+        <div class="field">
+          <label>Daily target (standard drinks)</label>
+          <input id="s-daily" type="number" min="0" step="1">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Grams per standard drink</label>
+          <select id="s-std">
+            <option value="14">14 g — US standard</option>
+            <option value="10">10 g — Australia / WHO</option>
+            <option value="8">8 g — UK unit</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <input id="s-cur" maxlength="4" placeholder="zł">
+        </div>
+      </div>
+      <button class="btn" id="saveSettings">Save preferences</button>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <p class="note" style="margin-top:0">Everything is stored only in this browser (localStorage). Nothing is uploaded anywhere.</p>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="ghost" id="importBtn">⇧ Import JSON</button>
+        <button class="ghost" id="clearBtn" style="color:var(--bad);border-color:var(--bad)">🗑 Erase all data</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const ETHANOL = 0.789;
+
+// rough kcal per ml on top of alcohol calories (craft skews maltier)
+const STYLE_KCAL = 0.42;
+
+const DEFAULTS = {weekly:16, daily:3, stdGrams:14, currency:"zł"};
+let store = load();
+let curRating = 0;
+let curHops = [];
+let curPhoto = null;
+
+function normalize(d){
+  d = d || {};
+  return {entries:d.entries||[], customStyles:d.customStyles||[], customHops:d.customHops||[], settings:Object.assign({},DEFAULTS,d.settings||{})};
+}
+function load(){
+  try{ return normalize(JSON.parse(localStorage.getItem("hoppd")||"{}")); }
+  catch(e){ return normalize({}); }
+}
+let pushTimer;
+function save(){
+  try{ localStorage.setItem("hoppd", JSON.stringify(store)); }
+  catch(e){ alert("Storage is full — export a backup and remove a few photos to free up space."); }
+  clearTimeout(pushTimer); pushTimer=setTimeout(pushToServer, 700); // debounce server sync
+}
+// ---------- server sync (persists to a GitHub Gist via the backend) ----------
+async function pushToServer(){
+  try{
+    await fetch("/api/data",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(store)});
+    setSync("saved");
+  }catch(e){ setSync("offline"); } // stays in localStorage; retries on next save
+}
+async function syncFromServer(){
+  setSync("syncing");
+  try{
+    const r = await fetch("/api/data",{cache:"no-store"});
+    if(!r.ok) throw 0;
+    const d = await r.json();
+    const serverHas = d && Array.isArray(d.entries) && d.entries.length>0;
+    const localHas = store.entries.length>0;
+    if(serverHas){
+      store = normalize(d);
+      try{ localStorage.setItem("hoppd", JSON.stringify(store)); }catch(e){}
+      renderAll();
+      setSync("saved");
+    } else if(localHas){
+      await pushToServer();       // seed the server from this device's local data
+    } else { setSync("saved"); }
+  }catch(e){ setSync("offline"); } // no backend (e.g. opened as a file) → localStorage only
+}
+function renderAll(){
+  loadSettings(); refreshLists(); renderHopsList(); renderHopChips();
+  const active=document.querySelector('.tab.active');
+  if(active && active.dataset.tab==='dash') renderDash();
+  else if(active && active.dataset.tab==='trends') renderTrends();
+}
+function setSync(state){
+  const el=$("#syncDot"); if(!el) return;
+  const map={saved:["●","Saved to cloud","var(--good)"],syncing:["◍","Syncing…","var(--muted)"],offline:["●","Saved on this device","var(--muted)"]};
+  const [dot,txt,col]=map[state]||map.offline;
+  el.textContent=dot+" "+txt; el.style.color=col;
+}
+
+const grams = (vol,abv)=> vol*(abv/100)*ETHANOL;
+const stdOf = e => grams(e.vol,e.abv)/store.settings.stdGrams;
+const calOf = e => grams(e.vol,e.abv)*7 + e.vol*STYLE_KCAL;
+const fmt = n => (Math.round(n*10)/10).toLocaleString();
+const dayKey = ts => { const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
+const startOfWeek = d => { const x=new Date(d); const g=(x.getDay()+6)%7; x.setDate(x.getDate()-g); x.setHours(0,0,0,0); return x; };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// render stars for a 0-5 value (half increments) as spans
+function starHTML(val,size){
+  let h=`<span style="white-space:nowrap${size?';font-size:'+size:''}">`;
+  for(let i=1;i<=5;i++){
+    const f = Math.max(0, Math.min(1, val-(i-1)));
+    h+=`<span style="position:relative;display:inline-block;color:var(--line)">★<span style="position:absolute;left:0;top:0;overflow:hidden;color:var(--star);width:${f*100}%">★</span></span>`;
+  }
+  return h+"</span>";
+}
+
+// ---------- line icons (Lucide-style, inherit color via currentColor) ----------
+const svgIco = p => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICONS = {
+  beer: svgIco('<path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 3 11 3s2 .5 3 .5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/>'),
+  user: svgIco('<circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/>'),
+  trending: svgIco('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'),
+  sliders: svgIco('<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>'),
+  download: svgIco('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>'),
+  upload: svgIco('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>'),
+  trash: svgIco('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'),
+  camera: svgIco('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'),
+  leaf: svgIco('<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>'),
+  flame: svgIco('<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'),
+  gauge: svgIco('<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>'),
+  cash: svgIco('<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01"/><path d="M18 12h.01"/>'),
+  sprout: svgIco('<path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/>'),
+  repeat: svgIco('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>'),
+  medal: svgIco('<path d="M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15"/><path d="M11 12 5.12 2.2"/><path d="m13 12 5.88-9.8"/><path d="M8 7h8"/><circle cx="12" cy="17" r="5"/>'),
+  compass: svgIco('<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>'),
+  globe: svgIco('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
+  target: svgIco('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
+  moon: svgIco('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  citrus: svgIco('<path d="M21.66 17.67a1.08 1.08 0 0 1-.04 1.6A12 12 0 0 1 4.73 2.38a1.1 1.1 0 0 1 1.61-.04z"/><path d="M19.65 15.66A8 8 0 0 1 8.35 4.34"/><path d="m14 10-5.5 5.5"/><path d="M14 17.85V10H6.15"/>'),
+  dumbbell: svgIco('<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>'),
+  star: svgIco('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
+  lock: svgIco('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+};
+function initIcons(){
+  $(".logo").innerHTML = ICONS.beer;
+  $("#exportBtn").innerHTML = ICONS.download + "<span>Export</span>";
+  const tl={log:["beer","Check-in"],dash:["user","My Profile"],trends:["trending","Trends"],settings:["sliders","Settings"]};
+  Object.entries(tl).forEach(([k,[ic,txt]])=>{ const b=$(`.tab[data-tab="${k}"]`); if(b) b.innerHTML=ICONS[ic]+`<span>${txt}</span>`; });
+  const pi=$("#photoAdd .pi"); if(pi) pi.innerHTML=ICONS.camera;
+  $("#importBtn").innerHTML = ICONS.upload + "<span>Import JSON</span>";
+  $("#clearBtn").innerHTML = ICONS.trash + "<span>Erase all data</span>";
+}
+
+// ---------- tabs ----------
+$$(".tab").forEach(t=>t.onclick=()=>{
+  $$(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  ["log","dash","trends","settings"].forEach(n=> $("#tab-"+n).hidden = n!==t.dataset.tab);
+  if(t.dataset.tab==="dash") renderDash();
+  if(t.dataset.tab==="trends") renderTrends();
+});
+
+// ---------- styles: a permanent tag book, picked from a dropdown ----------
+// Once created, a style lives in store.customStyles forever — you attach it
+// to a check-in by selecting it (with a checkmark) or typing a new one.
+let styleValue = "";
+function allStyles(){
+  const set=[...(store.customStyles||[])];
+  store.entries.forEach(e=>{ if(e.style && e.style!=="Uncategorized" && !set.some(x=>x.toLowerCase()===e.style.toLowerCase())) set.push(e.style); });
+  return set.sort((a,b)=>a.localeCompare(b));
+}
+function rememberStyle(name){
+  name=(name||"").trim();
+  if(!name) return;
+  if(!(store.customStyles||[]).some(s=>s.toLowerCase()===name.toLowerCase())){
+    store.customStyles.push(name); save();
+  }
+}
+function renderStyleChips(){
+  $("#styleChips").innerHTML = styleValue
+    ? `<span class="tagchip">${esc(styleValue)}<button type="button" id="styleChipRemove">✕</button></span>` : "";
+  // a single style attaches at a time: once picked, hide the picker input;
+  // removing the chip (✕) brings the input back.
+  $("#styleSelect .tagbox").hidden = !!styleValue;
+  if(styleValue) closeStylePanel();
+  const rm=$("#styleChipRemove");
+  if(rm) rm.onclick=()=>{ styleValue=""; $("#f-style").value=""; renderStyleChips(); $("#f-style").focus(); };
+}
+function renderStylePanel(){
+  const q=$("#f-style").value.trim().toLowerCase();
+  const all=allStyles();
+  const filtered = q ? all.filter(s=>s.toLowerCase().includes(q)) : all;
+  const exact = all.some(s=>s.toLowerCase()===q);
+  const createBtn=$("#styleCreateBtn");
+  if(q && !exact){
+    createBtn.hidden=false;
+    $("#styleCreateLabel").textContent = `Create “${$("#f-style").value.trim()}”`;
+  } else createBtn.hidden=true;
+  $("#styleOptions").innerHTML = filtered.length ? filtered.map(s=>{
+    const isSel = styleValue && s.toLowerCase()===styleValue.toLowerCase();
+    return `<div class="tagopt ${isSel?'sel':''}" data-name="${esc(s)}"><span class="ck">${isSel?'✓':''}</span>${esc(s)}</div>`;
+  }).join("") : (q ? "" : `<div class="tagempty">No styles yet — type to create one</div>`);
+  $$(".tagopt").forEach(el=>el.onclick=()=> selectStyle(el.dataset.name));
+}
+function selectStyle(name){
+  styleValue = name;
+  rememberStyle(name);
+  $("#f-style").value = "";
+  renderStyleChips();
+  closeStylePanel();
+}
+function openStylePanel(){ renderStylePanel(); $("#stylePanel").hidden=false; }
+function closeStylePanel(){ $("#stylePanel").hidden=true; }
+function resetStyleSelect(){ styleValue=""; $("#f-style").value=""; renderStyleChips(); closeStylePanel(); }
+$("#f-style").addEventListener("focus", openStylePanel);
+$("#f-style").addEventListener("input", renderStylePanel);
+$("#f-style").addEventListener("keydown", e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    const name=$("#f-style").value.trim(); if(!name) return;
+    const match=allStyles().find(s=>s.toLowerCase()===name.toLowerCase());
+    selectStyle(match||name);
+  } else if(e.key==="Escape"){ closeStylePanel(); $("#f-style").blur(); }
+});
+$("#styleCreateBtn").addEventListener("click", ()=>{
+  const name=$("#f-style").value.trim(); if(!name) return;
+  selectStyle(name);
+});
+document.addEventListener("click", e=>{ if(!$("#styleSelect").contains(e.target)) closeStylePanel(); });
+
+// ---------- hops: a permanent tag book like styles, but multiple per beer ----------
+// Every hop you type is saved to store.customHops forever and shown in the
+// dropdown so you can reuse it with a click on the next check-in.
+function allHops(){
+  const set=[...(store.customHops||[])];
+  store.entries.forEach(e=>(e.hops||[]).forEach(h=>{ if(!set.some(x=>x.toLowerCase()===h.toLowerCase())) set.push(h); }));
+  return set.sort((a,b)=>a.localeCompare(b));
+}
+function rememberHop(name){
+  name=(name||"").trim();
+  if(!name) return;
+  if(!(store.customHops||[]).some(h=>h.toLowerCase()===name.toLowerCase())){
+    store.customHops.push(name); save();
+  }
+}
+function renderHopChips(){
+  const box=$("#hopBox"), inp=$("#f-hop");
+  box.querySelectorAll(".hopchip").forEach(c=>c.remove());
+  curHops.forEach((h,idx)=>{
+    const chip=document.createElement("span"); chip.className="hopchip";
+    chip.innerHTML=`${ICONS.leaf}${esc(h)}<button type="button" data-idx="${idx}">✕</button>`;
+    box.insertBefore(chip, inp);
+  });
+  box.querySelectorAll(".hopchip button").forEach(b=>b.onclick=()=>{ curHops.splice(+b.dataset.idx,1); renderHopChips(); renderHopPanel(); });
+}
+function renderHopPanel(){
+  const q=$("#f-hop").value.trim().toLowerCase();
+  const all=allHops();
+  const filtered = q ? all.filter(h=>h.toLowerCase().includes(q)) : all;
+  const exact = all.some(h=>h.toLowerCase()===q);
+  const createBtn=$("#hopCreateBtn");
+  if(q && !exact){ createBtn.hidden=false; $("#hopCreateLabel").textContent=`Create “${$("#f-hop").value.trim()}”`; }
+  else createBtn.hidden=true;
+  $("#hopOptions").innerHTML = filtered.length ? filtered.map(h=>{
+    const on = curHops.some(x=>x.toLowerCase()===h.toLowerCase());
+    return `<div class="tagopt ${on?'sel':''}" data-name="${esc(h)}"><span class="ck">${on?'✓':''}</span>${esc(h)}</div>`;
+  }).join("") : (q ? "" : `<div class="tagempty">No hops yet — type to create one</div>`);
+  $$("#hopOptions .tagopt").forEach(el=>el.onclick=()=> toggleHop(el.dataset.name));
+}
+function toggleHop(name){
+  const i=curHops.findIndex(x=>x.toLowerCase()===name.toLowerCase());
+  if(i>=0) curHops.splice(i,1);
+  else { curHops.push(name); rememberHop(name); }
+  $("#f-hop").value="";
+  renderHopChips(); renderHopPanel(); $("#f-hop").focus();
+}
+function openHopPanel(){ renderHopPanel(); $("#hopPanel").hidden=false; }
+function closeHopPanel(){ $("#hopPanel").hidden=true; }
+function resetHops(){ curHops=[]; $("#f-hop").value=""; renderHopChips(); closeHopPanel(); }
+$("#f-hop").addEventListener("focus", openHopPanel);
+$("#f-hop").addEventListener("input", renderHopPanel);
+$("#f-hop").addEventListener("keydown", e=>{
+  if(e.key==="Enter" || e.key===","){
+    e.preventDefault();
+    const v=$("#f-hop").value.trim().replace(/,+$/,""); if(!v) return;
+    const match=allHops().find(h=>h.toLowerCase()===v.toLowerCase());
+    if(match && curHops.some(x=>x.toLowerCase()===v.toLowerCase())){ $("#f-hop").value=""; renderHopPanel(); return; }
+    toggleHop(match||v);
+  } else if(e.key==="Backspace" && $("#f-hop").value==="" && curHops.length){ curHops.pop(); renderHopChips(); renderHopPanel(); }
+  else if(e.key==="Escape"){ closeHopPanel(); $("#f-hop").blur(); }
+});
+$("#hopCreateBtn").addEventListener("click", ()=>{ const v=$("#f-hop").value.trim(); if(v) toggleHop(v); });
+document.addEventListener("click", e=>{ if(!$("#hopSelect").contains(e.target)) closeHopPanel(); });
+// kept for compatibility with the save handler / init / import wiring
+function renderHopsList(){ renderHopPanel(); }
+
+// ---------- beer label photo: centre-cropped to a square, stored as a data URL ----------
+function squareCropImage(file, size, quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const side=Math.min(img.width,img.height);           // largest centred square in the source
+        const sx=(img.width-side)/2, sy=(img.height-side)/2;
+        const canvas=document.createElement("canvas"); canvas.width=size; canvas.height=size;
+        const ctx=canvas.getContext("2d");
+        ctx.imageSmoothingQuality="high";
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size); // crop → scale to size×size
+        resolve(canvas.toDataURL("image/jpeg",quality));
+      };
+      img.onerror=reject; img.src=e.target.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+$("#f-photo").addEventListener("change", async e=>{
+  const file=e.target.files[0]; if(!file) return;
+  try{
+    curPhoto = await squareCropImage(file, 500, 0.78);
+    $("#photoImg").src=curPhoto; $("#photoPreview").hidden=false; $("#photoAdd").hidden=true;
+  }catch(err){ alert("Couldn't read that image."); }
+});
+$("#photoRemove").addEventListener("click", ()=> resetPhoto());
+function resetPhoto(){
+  curPhoto=null; $("#f-photo").value=""; $("#photoPreview").hidden=true; $("#photoAdd").hidden=false;
+}
+
+// ---------- serving-size slider (0–2 L, 50 ml steps) synced with an inline exact number ----------
+function effVol(){
+  return +$("#volReadout").value||0;
+}
+function paintVolTrack(){
+  const rng=$("#f-volrange");
+  rng.style.setProperty("--pct", (rng.value/2000*100)+"%");
+}
+function resetVol(v){
+  v = Math.max(0, Math.min(2000, Math.round(v)||500));
+  $("#f-volrange").value = v;
+  $("#volReadout").value = v;
+  paintVolTrack(); updateCalc();
+}
+$("#f-volrange").addEventListener("input", e=>{
+  $("#volReadout").value = e.target.value;
+  paintVolTrack(); updateCalc();
+});
+$("#volReadout").addEventListener("input", e=>{
+  const v=Math.max(0,Math.min(2000,+e.target.value||0));
+  $("#f-volrange").value = Math.round(v/50)*50;
+  paintVolTrack(); updateCalc();
+});
+
+// ---------- star input (1–10) ----------
+function renderStars(){
+  const box=$("#stars"); box.innerHTML="";
+  for(let i=1;i<=10;i++){
+    const st=document.createElement("span");
+    st.className="st"; st.innerHTML='★<span class="fill">★</span>';
+    st.dataset.i=i;
+    st.addEventListener("mousemove",()=>previewStars(i));
+    st.addEventListener("mouseleave",()=>{ paintStars(curRating); $("#rateNum").textContent=curRating; });
+    st.addEventListener("click",()=>{ curRating=i; paintStars(curRating); $("#rateNum").textContent=curRating; });
+    box.appendChild(st);
+  }
+  paintStars(0);
+}
+function previewStars(v){ paintStars(v); $("#rateNum").textContent=v; }
+function paintStars(v){
+  $$("#stars .st").forEach((st,idx)=>{
+    st.querySelector(".fill").style.width=(idx<v?100:0)+"%";
+  });
+}
+
+// ---------- calc ----------
+function updateCalc(){
+  const vol=effVol(), abv=+$("#f-abv").value||0;
+  const g=grams(vol,abv);
+  $("#c-sd").textContent = fmt(g/store.settings.stdGrams);
+  $("#c-g").textContent = Math.round(g)+" g";
+  $("#c-cal").textContent = Math.round(g*7 + vol*STYLE_KCAL)+" kcal";
+}
+$("#f-abv").addEventListener("input",updateCalc);
+
+// autofill brewery/abv/style when a known beer name is picked
+$("#f-name").addEventListener("change",()=>{
+  const nm=$("#f-name").value.trim().toLowerCase();
+  const prev=store.entries.find(e=>e.name.toLowerCase()===nm);
+  if(prev){
+    if(!$("#f-brew").value) $("#f-brew").value=prev.brewery||"";
+    if(!$("#f-abv").value) $("#f-abv").value=prev.abv||"";
+    if(prev.style && !styleValue){ styleValue=prev.style; renderStyleChips(); }
+    if(prev.blg&&!$("#f-blg").value) $("#f-blg").value=prev.blg;
+    updateCalc();
+  }
+});
+
+// ---------- when: date only (time-of-day doesn't matter) ----------
+let whenDaysAgo = 0; // null means "use the custom date field"
+function todayStr(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function resetWhen(){
+  whenDaysAgo = 0;
+  $$(".wpill").forEach(x=>x.classList.remove("sel"));
+  $('.wpill[data-days="0"]').classList.add("sel");
+  $("#f-when").hidden = true; $("#f-when").value = "";
+}
+$$(".wpill").forEach(b=>b.addEventListener("click",()=>{
+  $$(".wpill").forEach(x=>x.classList.remove("sel"));
+  b.classList.add("sel");
+  if(b.dataset.custom){
+    whenDaysAgo = null;
+    $("#f-when").max = todayStr();
+    $("#f-when").hidden = false;
+    if(!$("#f-when").value) $("#f-when").value = todayStr();
+  } else {
+    whenDaysAgo = +b.dataset.days;
+    $("#f-when").hidden = true;
+  }
+}));
+function computeWhen(){
+  if(whenDaysAgo===null){
+    if(!$("#f-when").value) return Date.now();
+    const [y,m,d]=$("#f-when").value.split("-").map(Number);
+    return new Date(y,m-1,d,12,0,0,0).getTime();
+  }
+  if(whenDaysAgo===0) return Date.now();
+  const dt=new Date(); dt.setHours(12,0,0,0); dt.setDate(dt.getDate()-whenDaysAgo);
+  return dt.getTime();
+}
+
+// ---------- check in ----------
+$("#saveBtn").onclick=()=>{
+  if($("#f-hop").value.trim()){ const v=$("#f-hop").value.trim(); if(!curHops.some(x=>x.toLowerCase()===v.toLowerCase())) toggleHop(v); else $("#f-hop").value=""; }
+  if(!styleValue && $("#f-style").value.trim()) selectStyle($("#f-style").value.trim());
+  const vol=effVol(), abv=+$("#f-abv").value;
+  const name=$("#f-name").value.trim();
+  if(!name){ alert("What beer did you have? Add a name."); return; }
+  if(!vol||abv===""||isNaN(abv)){ alert("Enter a volume and ABV%"); return; }
+  store.entries.push({
+    id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
+    name, brewery:$("#f-brew").value.trim(), style:styleValue||"Uncategorized", hops:[...curHops],
+    abv, blg:+$("#f-blg").value||null, photo:curPhoto,
+    vol, cost:+$("#f-cost").value||0, rating:curRating, notes:$("#f-notes").value.trim(), ts:computeWhen()
+  });
+  save(); refreshLists(); renderHopsList();
+  // reset
+  ["f-name","f-brew","f-abv","f-blg","f-cost","f-notes"].forEach(id=>$("#"+id).value="");
+  curRating=0; paintStars(0); $("#rateNum").textContent="0";
+  resetVol(500); resetWhen(); resetHops(); resetPhoto(); resetStyleSelect();
+  toast("Checked in!");
+};
+
+// ---------- datalists ----------
+function refreshLists(){
+  const beers=[...new Set(store.entries.map(e=>e.name))].filter(Boolean);
+  const brews=[...new Set(store.entries.map(e=>e.brewery))].filter(Boolean);
+  $("#dl-beers").innerHTML=beers.map(b=>`<option value="${esc(b)}">`).join("");
+  $("#dl-brew").innerHTML=brews.map(b=>`<option value="${esc(b)}">`).join("");
+}
+
+// ---------- profile / dashboard ----------
+function renderDash(){
+  const S=store.settings, ents=store.entries;
+  const rated=ents.filter(e=>e.rating>0);
+  const avg = rated.length ? rated.reduce((s,e)=>s+e.rating,0)/rated.length : 0;
+  const uBeers=new Set(ents.map(e=>e.name.toLowerCase())).size;
+  const uBrews=new Set(ents.map(e=>(e.brewery||"").toLowerCase()).filter(Boolean)).size;
+  const uStyles=new Set(ents.map(e=>e.style)).size;
+
+  $("#statTiles").innerHTML=`
+    <div class="stat"><div class="k">Check-ins</div><div class="v">${ents.length}</div><div class="d">pours logged</div></div>
+    <div class="stat"><div class="k">Unique beers</div><div class="v">${uBeers}</div><div class="d">${uStyles} styles</div></div>
+    <div class="stat"><div class="k">Breweries</div><div class="v">${uBrews}</div><div class="d">explored</div></div>
+    <div class="stat"><div class="k">Avg rating</div><div class="v">${fmt(avg)}<small>/10</small></div><div class="d">${starHTML(avg/2,'13px')}</div></div>`;
+
+  // top rated (unique by name, best rating; tie-break most recent)
+  const best={};
+  rated.forEach(e=>{ const k=e.name.toLowerCase();
+    if(!best[k]||e.rating>best[k].rating||(e.rating===best[k].rating&&e.ts>best[k].ts)) best[k]=e; });
+  const top=Object.values(best).sort((a,b)=>b.rating-a.rating||b.ts-a.ts).slice(0,5);
+  $("#topBeers").innerHTML= top.length? top.map((e,i)=>`
+    <div class="topbeer">
+      <div class="rank">${i+1}</div>
+      ${e.photo?`<img src="${e.photo}" class="thumb">`:''}
+      <div class="info"><b>${esc(e.name)}</b><p>${esc(e.brewery||'—')} · ${esc(e.style)} · ${e.abv}%</p></div>
+      <div class="ministars">${starHTML(e.rating/2,'14px')}<small>${fmt(e.rating)}/10</small></div>
+    </div>`).join("") : `<p class="empty" style="padding:22px">Rate a few beers to build your leaderboard ⭐</p>`;
+
+  // favorite styles
+  const byStyle={};
+  ents.forEach(e=> byStyle[e.style]=(byStyle[e.style]||0)+1);
+  const totS=ents.length||1;
+  const sorted=Object.entries(byStyle).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  $("#styleBreak").innerHTML= sorted.length? sorted.map(([s,c])=>`
+    <div class="typerow">
+      <div class="nm">${esc(s)}</div>
+      <div class="track"><div class="fill2" style="width:${c/sorted[0][1]*100}%"></div></div>
+      <div class="pc">${c} · ${Math.round(c/totS*100)}%</div>
+    </div>`).join("") : `<p class="empty" style="padding:22px">No check-ins yet</p>`;
+
+  // rating histogram (1..10)
+  const buckets=Array(10).fill(0);
+  rated.forEach(e=>{ const b=Math.min(10,Math.max(1,Math.round(e.rating))); buckets[b-1]++; });
+  const mxB=Math.max(...buckets,1);
+  $("#ratingHist").innerHTML=[10,9,8,7,6,5,4,3,2,1].map(star=>{
+    const c=buckets[star-1];
+    return `<div class="histrow"><div class="hl">${star}★</div>
+      <div class="track"><div class="hf" style="width:${c/mxB*100}%"></div></div>
+      <div class="hc">${c}</div></div>`;
+  }).join("");
+
+  // badges
+  const b=computeBadges(ents,uBeers,uBrews,uStyles);
+  $("#badges").innerHTML=b.map(x=>`
+    <div class="badge ${x.earned?'earned':'locked'}">
+      <div class="bi">${x.earned?ICONS[x.ico]:ICONS.lock}</div>
+      <div class="bn">${x.name}</div><div class="bd">${x.desc}</div>
+    </div>`).join("");
+  $("#badgeCount").textContent=`${b.filter(x=>x.earned).length} / ${b.length} earned`;
+
+  // week bars + goal
+  const now=new Date(), wkStart=startOfWeek(now);
+  const days=[...Array(7)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()+i); return d.getTime(); });
+  const perDay=days.map(k=> ents.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+stdOf(e),0));
+  const weekTotal=perDay.reduce((a,c)=>a+c,0);
+  const todayIdx=(now.getDay()+6)%7;
+  const mx=Math.max(S.daily,...perDay,1);
+  const dn=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  $("#weekBars").innerHTML=perDay.map((v,i)=>{
+    const h=Math.max(3,v/mx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
+    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
+      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
+      <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn[i]}</div></div>`;
+  }).join("");
+  const wd=new Date(days[0]),we=new Date(days[6]);
+  $("#weekRange").textContent=`${wd.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${we.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`;
+  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), over=weekTotal>S.weekly;
+  $("#goalFill").className="goalfill"+(over?" over":""); $("#goalFill").style.width=gpct+"%";
+  $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks this week`;
+
+  const avgAbv = ents.length? ents.reduce((s,e)=>s+e.abv,0)/ents.length : 0;
+  const spend = ents.reduce((s,e)=>s+(e.cost||0),0);
+  $("#pillStreak").innerHTML=`${ICONS.flame}<span>${dryStreak()} dry days</span>`;
+  $("#pillAbv").innerHTML=`${ICONS.gauge}<span>${fmt(avgAbv)}% avg ABV</span>`;
+  $("#pillSpend").innerHTML=`${ICONS.cash}<span>${fmt(spend)} ${S.currency} all-time</span>`;
+}
+
+function computeBadges(ents,uBeers,uBrews,uStyles){
+  const ipa=ents.filter(e=>/ipa/i.test(e.style)).length;
+  const stout=ents.filter(e=>/stout|porter/i.test(e.style)).length;
+  const sour=ents.filter(e=>/sour|gose/i.test(e.style)).length;
+  const big=ents.some(e=>e.abv>=9);
+  const perfect=ents.some(e=>e.rating>=10);
+  return [
+    {ico:"sprout",name:"First Pour",desc:"Log your first check-in",earned:ents.length>=1},
+    {ico:"repeat",name:"Regular",desc:"25 check-ins",earned:ents.length>=25},
+    {ico:"medal",name:"Century",desc:"100 check-ins",earned:ents.length>=100},
+    {ico:"compass",name:"Explorer",desc:"Try 8 styles",earned:uStyles>=8},
+    {ico:"globe",name:"Globetrotter",desc:"10 breweries",earned:uBrews>=10},
+    {ico:"target",name:"Hop Head",desc:"10 IPAs",earned:ipa>=10},
+    {ico:"moon",name:"Dark Arts",desc:"10 stouts/porters",earned:stout>=10},
+    {ico:"citrus",name:"Pucker Up",desc:"5 sours",earned:sour>=5},
+    {ico:"dumbbell",name:"Heavyweight",desc:"A beer ≥ 9% ABV",earned:big},
+    {ico:"star",name:"Perfect Pint",desc:"Rate a beer 10/10",earned:perfect},
+  ];
+}
+function dryStreak(){
+  if(!store.entries.length) return 0;
+  const last=Math.max(...store.entries.map(e=>e.ts));
+  return Math.max(0,Math.floor((dayKey(Date.now())-dayKey(last))/864e5));
+}
+
+// ---------- trends (consumption over time) ----------
+function renderTrends(){
+  const S=store.settings, ents=store.entries, now=new Date();
+  const mKey = d => d.getFullYear()*12 + d.getMonth();
+  const delta=(a,b)=> b===0 ? (a>0?100:0) : Math.round((a-b)/b*100);
+  const trendD=(cur,prev)=>{
+    if(prev===0 && cur===0) return `<span class="flat">no prior data</span>`;
+    const d=delta(cur,prev), cls=d>0?'up':d<0?'down':'flat', arrow=d>0?'▲':d<0?'▼':'●';
+    return `<span class="${cls}">${arrow} ${Math.abs(d)}% vs last mo</span>`;
+  };
+
+  // month-to-date vs previous month
+  const curM=mKey(now), prevM=curM-1;
+  const inM = m => ents.filter(e=> mKey(new Date(e.ts))===m);
+  const thisM=inM(curM), lastM=inM(prevM);
+  const sum=(a,f)=>a.reduce((s,e)=>s+f(e),0);
+  const stdThis=sum(thisM,stdOf), stdLast=sum(lastM,stdOf);
+  const spendThis=sum(thisM,e=>e.cost||0), spendLast=sum(lastM,e=>e.cost||0);
+  const abvThis = thisM.length? sum(thisM,e=>e.abv)/thisM.length : 0;
+  $("#trendTiles").innerHTML=`
+    <div class="stat"><div class="k">Std drinks · mo</div><div class="v">${fmt(stdThis)}</div><div class="d">${trendD(stdThis,stdLast)}</div></div>
+    <div class="stat"><div class="k">Beers · mo</div><div class="v">${thisM.length}</div><div class="d">${trendD(thisM.length,lastM.length)}</div></div>
+    <div class="stat"><div class="k">Spent · mo</div><div class="v">${fmt(spendThis)}<small> ${S.currency}</small></div><div class="d">${trendD(spendThis,spendLast)}</div></div>
+    <div class="stat"><div class="k">Avg ABV · mo</div><div class="v">${fmt(abvThis)}<small>%</small></div><div class="d flat">this month</div></div>`;
+
+  // consumption over last 12 weeks
+  const wkStart=startOfWeek(now);
+  const weeks=[...Array(12)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()-(11-i)*7); return d; });
+  const wkStd=weeks.map(ws=>{ const a=ws.getTime(), b=a+7*864e5; return sum(ents.filter(e=>e.ts>=a&&e.ts<b),stdOf); });
+  const mx=Math.max(S.weekly,...wkStd,1);
+  $("#weeksBars").innerHTML=weeks.map((ws,i)=>{
+    const v=wkStd[i], h=Math.max(3,v/mx*100), over=v>S.weekly;
+    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
+      <div class="bar ${over?'over':''}" style="height:${h}%"></div>
+      <div class="bar-lbl">${i%2===0?ws.toLocaleDateString(undefined,{month:'short',day:'numeric'}):''}</div></div>`;
+  }).join("");
+  $("#consumeSub").textContent=`${weeks[0].toLocaleDateString(undefined,{month:'short',day:'numeric'})} – now · limit ${S.weekly}/wk`;
+
+  // spend by month (last 6)
+  const months=[...Array(6)].map((_,i)=> new Date(now.getFullYear(),now.getMonth()-(5-i),1));
+  const monSpend=months.map(m=> sum(ents.filter(e=>mKey(new Date(e.ts))===mKey(m)),e=>e.cost||0));
+  const smx=Math.max(...monSpend,1);
+  $("#spendBars").innerHTML=months.map((m,i)=>{
+    const v=monSpend[i], h=Math.max(3,v/smx*100);
+    return `<div class="bar-col"><div class="bar-val">${v>0?Math.round(v):''}</div>
+      <div class="bar" style="height:${h}%"></div>
+      <div class="bar-lbl">${m.toLocaleDateString(undefined,{month:'short'})}</div></div>`;
+  }).join("");
+
+  // when you drink — by weekday (standard drinks)
+  const dn=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], dow=[0,0,0,0,0,0,0];
+  ents.forEach(e=>{ dow[(new Date(e.ts).getDay()+6)%7]+=stdOf(e); });
+  const dmx=Math.max(...dow,1);
+  $("#dowBreak").innerHTML=dow.map((v,i)=>`
+    <div class="typerow"><div class="nm">${dn[i]}</div>
+      <div class="track"><div class="fill2" style="width:${v/dmx*100}%"></div></div>
+      <div class="pc">${fmt(v)}</div></div>`).join("");
+
+  // strength — avg ABV per week (last 8)
+  const w8=[...Array(8)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()-(7-i)*7); return d; });
+  const abvW=w8.map(ws=>{ const a=ws.getTime(),b=a+7*864e5; const es=ents.filter(e=>e.ts>=a&&e.ts<b); return es.length? sum(es,e=>e.abv)/es.length:0; });
+  const amx=Math.max(...abvW,1);
+  $("#abvBars").innerHTML=w8.map((ws,i)=>{
+    const v=abvW[i], h=Math.max(3,v/amx*100);
+    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
+      <div class="bar" style="height:${h}%"></div>
+      <div class="bar-lbl">${i%2===0?ws.toLocaleDateString(undefined,{day:'numeric'}):''}</div></div>`;
+  }).join("");
+
+  renderHistory();
+}
+
+// ---------- recent check-ins list ----------
+function renderHistory(){
+  const all=[...store.entries].sort((a,b)=>b.ts-a.ts);
+  const ents=all.slice(0,25);
+  $("#histCount").textContent = all.length>25 ? `latest 25 of ${all.length}` : `${all.length} check-ins`;
+  if(!ents.length){ $("#logList").innerHTML=`<div class="empty"><div class="big">${ICONS.beer}</div>No check-ins yet.<br>Rate your first beer from the Check-in tab.</div>`; return; }
+  const groups={};
+  ents.forEach(e=>{ const k=dayKey(e.ts); (groups[k]=groups[k]||[]).push(e); });
+  const S=store.settings;
+  $("#logList").innerHTML=Object.keys(groups).sort((a,b)=>b-a).map(k=>{
+    const list=groups[k], dayStd=list.reduce((s,e)=>s+stdOf(e),0), d=new Date(+k);
+    const label=k==dayKey(Date.now())?"Today":k==dayKey(Date.now()-864e5)?"Yesterday":
+      d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="log-day"><h3>${label} <span>${list.length} pour${list.length>1?'s':''} · ${fmt(dayStd)} std</span></h3>
+      ${list.sort((a,b)=>b.ts-a.ts).map(e=>`
+        <div class="entry">
+          ${e.photo?`<img src="${e.photo}" class="entryPhoto">`:'<div class="emo">'+ICONS.beer+'</div>'}
+          <div class="info">
+            <b>${esc(e.name)}</b>
+            <div class="brew">${esc(e.brewery||'Unknown brewery')}</div>
+            <div class="meta">${e.abv}%${e.blg?` · ${e.blg}°Blg`:''} · ${e.vol}ml${e.cost?` · ${fmt(e.cost)} ${S.currency}`:''}</div>
+            <span class="stylechip">${esc(e.style)}</span>
+            ${e.hops&&e.hops.length?`<div class="hopschips">${e.hops.map(h=>`<span class="hopchip small">${ICONS.leaf}${esc(h)}</span>`).join("")}</div>`:''}
+            ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:''}
+          </div>
+          <div class="right">
+            <button class="del" data-id="${e.id}" title="Delete">✕</button>
+            <div class="ministars">${e.rating>0?starHTML(e.rating/2,'14px'):'<span style="color:var(--faint);font-size:11px">unrated</span>'}</div>
+            ${e.rating>0?`<div style="font-size:12px;color:var(--muted);font-weight:600">${fmt(e.rating)}/10</div>`:''}
+          </div>
+        </div>`).join("")}
+    </div>`;
+  }).join("");
+  $$(".del").forEach(b=>b.onclick=()=>{
+    store.entries=store.entries.filter(e=>e.id!==b.dataset.id);
+    save(); refreshLists(); renderTrends();
+  });
+}
+
+// ---------- settings ----------
+function loadSettings(){
+  const S=store.settings;
+  $("#s-weekly").value=S.weekly; $("#s-daily").value=S.daily;
+  $("#s-std").value=S.stdGrams; $("#s-cur").value=S.currency;
+}
+$("#saveSettings").onclick=()=>{
+  store.settings={weekly:+$("#s-weekly").value||16, daily:+$("#s-daily").value||3,
+    stdGrams:+$("#s-std").value||14, currency:$("#s-cur").value.trim()||"zł"};
+  save(); updateCalc(); toast("✓ Saved");
+};
+
+// ---------- data ----------
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(store,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download=`hoppd-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+};
+$("#importBtn").onclick=()=>$("#importFile").click();
+$("#importFile").onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!d.entries) throw 0;
+    store={entries:d.entries, customStyles:d.customStyles||[], customHops:d.customHops||[], settings:Object.assign({},DEFAULTS,d.settings||{})};
+    save(); loadSettings(); refreshLists(); resetStyleSelect(); renderHopsList(); toast("✓ Imported "+d.entries.length+" check-ins");
+  }catch(x){ alert("That doesn't look like a Hoppd backup."); } };
+  r.readAsText(f);
+};
+$("#clearBtn").onclick=()=>{
+  if(confirm("Erase ALL check-ins and settings? This can't be undone.")){
+    localStorage.removeItem("hoppd"); store=load(); loadSettings(); refreshLists(); resetStyleSelect(); renderHopsList(); renderTrends(); toast("Data erased");
+  }
+};
+
+// ---------- toast ----------
+let tT;
+function toast(msg){
+  let t=$("#toast");
+  if(!t){ t=document.createElement("div"); t.id="toast";
+    t.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--card2);border:1px solid var(--line);color:var(--text);padding:12px 20px;border-radius:14px;box-shadow:var(--shadow);font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:99";
+    document.body.appendChild(t); }
+  t.textContent=msg;
+  requestAnimationFrame(()=>{ t.style.opacity=1; t.style.transform="translateX(-50%) translateY(0)"; });
+  clearTimeout(tT); tT=setTimeout(()=>{ t.style.opacity=0; t.style.transform="translateX(-50%) translateY(20px)"; },1900);
+}
+
+// ---------- init ----------
+initIcons();
+resetStyleSelect(); renderHopsList(); renderStars(); loadSettings(); refreshLists();
+resetVol(500); renderHopChips();
+syncFromServer();   // pull latest from the cloud (Gist) and keep it in sync
+</script>
+</body>
+</html>

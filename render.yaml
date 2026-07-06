@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: type-in
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python serve.py"
+    envVars:
+      - key: GITHUB_TOKEN
+        sync: false        # set in the Render dashboard (secret)
+      - key: GIST_ID
+        sync: false        # set in the Render dashboard
+      - key: GIST_FILE
+        value: hoppd-data.json
