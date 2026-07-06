@@ -325,6 +325,41 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 .hopchip svg.ico{width:13px;height:13px;margin-right:1px}
 .empty .big svg.ico{width:40px;height:40px;stroke:var(--muted)}
 .entry .emo svg.ico{width:22px;height:22px;stroke:var(--muted)}
+.syncLabel{margin-left:5px}
+
+/* ===== Mobile ===== */
+@media(max-width:560px){
+  .wrap{padding:16px 13px}
+  header.top{gap:8px}
+  .brand h1{font-size:19px}
+  .logo{width:34px;height:34px}
+  .logo svg.ico{width:19px;height:19px}
+  .syncLabel{display:none}                 /* keep just the coloured dot */
+  #syncDot{font-size:14px}
+  #exportBtn span{display:none}            /* icon-only Export */
+  #exportBtn{padding:9px 11px}
+
+  /* icon-only tab bar so 4 tabs fit */
+  .tabs{gap:3px}
+  .tab{padding:10px 0;gap:0}
+  .tab span{display:none}
+  .tab svg.ico{width:21px;height:21px}
+
+  /* headings: let the sub-label drop to its own line instead of cramming */
+  .card{padding:15px}
+  .card h2{flex-wrap:wrap;gap:2px 8px}
+  .card h2 .sub{margin-left:0;width:100%}
+  #tab-log .card h2{font-size:22px}
+
+  /* rating row: give it full width and shrink the 10 stars so they fit */
+  .rowRatingCost{grid-template-columns:1fr}
+  .rate{gap:8px;flex-wrap:nowrap}
+  .stars{gap:1px;font-size:23px}
+  .stars .st{width:23px}
+  .rateval{font-size:22px}
+
+  .calcbox{gap:10px 20px}
+}
 </style>
 </head>
 <body>
@@ -657,7 +692,8 @@ function setSync(state){
   const el=$("#syncDot"); if(!el) return;
   const map={saved:["●","Saved to cloud","var(--good)"],syncing:["◍","Syncing…","var(--muted)"],offline:["●","Saved on this device","var(--muted)"]};
   const [dot,txt,col]=map[state]||map.offline;
-  el.textContent=dot+" "+txt; el.style.color=col;
+  el.innerHTML=`<span class="syncMark">${dot}</span><span class="syncLabel">${txt}</span>`;
+  el.style.color=col;
 }
 
 const grams = (vol,abv)=> vol*(abv/100)*ETHANOL;
