@@ -350,6 +350,12 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 .seg:hover{color:#0B0B0B}
 .seg.sel{background:#0B0B0B;color:#fff}
 
+/* limit threshold line on the consumption chart */
+#weeksBars{position:relative}
+.limitline{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--accent);pointer-events:none;z-index:2}
+.limitline[hidden]{display:none}
+.limitcap{position:absolute;right:0;top:-8px;background:var(--card);padding:0 5px;font-size:10px;font-weight:700;letter-spacing:.02em;color:var(--accent);white-space:nowrap}
+
 /* ===== Mobile ===== */
 @media(max-width:560px){
   .wrap{padding:16px 13px}
@@ -1319,6 +1325,24 @@ function renderConsumption(){
   $("#consumeSub").textContent=sub;
   $("#legendUnit").textContent=`Standard drinks / ${unitWord}`;
   $("#legendOver").textContent=overLabel;
+  positionLimitLine(limit, mx, vals);
+}
+// draw a dashed threshold line at the limit so you can see how far bars go over it
+function positionLimitLine(limit, mx, vals){
+  const wrap=$("#weeksBars");
+  let line=wrap.querySelector('.limitline');
+  if(!line){ line=document.createElement('div'); line.className='limitline'; line.innerHTML='<span class="limitcap"></span>'; wrap.appendChild(line); }
+  const cols=[...wrap.querySelectorAll('.bar-col')];
+  const maxVal=Math.max(...vals,0);
+  // show only when the limit falls within the charted range and there's a bar to scale from
+  if(!limit || limit>mx+1e-9 || maxVal<=0){ line.hidden=true; return; }
+  // measure the tallest bar → exact pixels-per-unit (robust to the flex layout)
+  const bar=cols[vals.indexOf(maxVal)].querySelector('.bar');
+  const barRect=bar.getBoundingClientRect(), wrapRect=wrap.getBoundingClientRect();
+  const pxPerUnit=barRect.height/maxVal;
+  line.hidden=false;
+  line.style.bottom=((wrapRect.bottom-barRect.bottom) + limit*pxPerUnit)+'px';
+  line.querySelector('.limitcap').textContent='limit '+fmt(limit);
 }
 $$("#consumeRange .seg").forEach(b=>b.onclick=()=>{
   trendMode=b.dataset.mode;
@@ -1328,6 +1352,9 @@ $$("#consumeRange .seg").forEach(b=>b.onclick=()=>{
 });
 $("#weekPrev").onclick=()=>{ weekOffset-=1; renderConsumption(); };
 $("#weekNext").onclick=()=>{ if(weekOffset<0){ weekOffset+=1; renderConsumption(); } };
+// keep the limit line aligned when the viewport changes
+let _limitResizeT;
+window.addEventListener('resize',()=>{ clearTimeout(_limitResizeT); _limitResizeT=setTimeout(()=>{ if(!$("#tab-trends").hidden) renderConsumption(); },150); });
 
 // ---------- trends (consumption over time) ----------
 function renderTrends(){
