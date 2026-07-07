@@ -338,7 +338,14 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 .editbtn svg.ico{width:15px;height:15px}
 
 /* segmented range toggle (Week / Month / Year) */
-.segmented{display:inline-flex;gap:3px;background:#F0F0F2;border-radius:999px;padding:3px;margin-bottom:14px}
+.consumeControls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.segmented{display:inline-flex;gap:3px;background:#F0F0F2;border-radius:999px;padding:3px}
+.weeknav{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text)}
+.weeknav[hidden]{display:none}
+.weeknav #weekLabel{min-width:112px;text-align:center}
+.weeknav button{width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#0B0B0B;font-size:16px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
+.weeknav button:hover:not(:disabled){border-color:#0B0B0B}
+.weeknav button:disabled{opacity:.35;cursor:default}
 .seg{border:none;background:none;font:inherit;font-size:13px;font-weight:600;color:#6E6E78;padding:6px 16px;border-radius:999px;cursor:pointer;transition:.15s}
 .seg:hover{color:#0B0B0B}
 .seg.sel{background:#0B0B0B;color:#fff}
@@ -581,10 +588,17 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 
     <div class="card">
       <h2>Consumption over time <span class="sub" id="consumeSub"></span></h2>
-      <div class="segmented" id="consumeRange">
-        <button type="button" class="seg sel" data-mode="week">Week</button>
-        <button type="button" class="seg" data-mode="month">Month</button>
-        <button type="button" class="seg" data-mode="year">Year</button>
+      <div class="consumeControls">
+        <div class="segmented" id="consumeRange">
+          <button type="button" class="seg sel" data-mode="week">Week</button>
+          <button type="button" class="seg" data-mode="month">Month</button>
+          <button type="button" class="seg" data-mode="year">Year</button>
+        </div>
+        <div class="weeknav" id="weekNav" hidden>
+          <button type="button" id="weekPrev" aria-label="Previous week">‹</button>
+          <span id="weekLabel"></span>
+          <button type="button" id="weekNext" aria-label="Next week">›</button>
+        </div>
       </div>
       <div class="barwrap tall" id="weeksBars"></div>
       <div class="legend">
@@ -1250,10 +1264,11 @@ function dryStreak(){
 
 // ---------- consumption chart with Week / Month / Year switch ----------
 let trendMode = 'week';
+let weekOffset = 0;   // 0 = current week, -1 = last week, …
 function renderConsumption(){
   const S=store.settings, ents=store.entries, now=new Date();
   const sum=(a,f)=>a.reduce((s,e)=>s+f(e),0);
-  let buckets, limit, unitWord, limitWord, labelEvery, sub;
+  let buckets, limit, unitWord, overLabel, labelEvery, sub;
 
   if(trendMode==='month'){
     buckets=[...Array(12)].map((_,i)=>{
@@ -1261,7 +1276,7 @@ function renderConsumption(){
       const e=new Date(now.getFullYear(),now.getMonth()-(11-i)+1,1);
       return {a:d.getTime(), b:e.getTime(), label:d.toLocaleDateString(undefined,{month:'short'})};
     });
-    limit=S.weekly*52/12; unitWord='month'; limitWord='monthly'; labelEvery=1;
+    limit=S.weekly*52/12; unitWord='month'; overLabel='Over monthly limit'; labelEvery=1;
     sub=`last 12 months · limit ${Math.round(limit)}/mo`;
   } else if(trendMode==='year'){
     const yNow=now.getFullYear();
@@ -1271,22 +1286,28 @@ function renderConsumption(){
       const y=startY+i;
       return {a:new Date(y,0,1).getTime(), b:new Date(y+1,0,1).getTime(), label:String(y)};
     });
-    limit=S.weekly*52; unitWord='year'; limitWord='yearly'; labelEvery=1;
+    limit=S.weekly*52; unitWord='year'; overLabel='Over yearly limit'; labelEvery=1;
     sub=`${buckets[0].label} – ${buckets[n-1].label} · limit ${Math.round(limit)}/yr`;
-  } else { // week (default)
-    const wkStart=startOfWeek(now);
-    buckets=[...Array(12)].map((_,i)=>{
-      const d=new Date(wkStart); d.setDate(d.getDate()-(11-i)*7);
-      return {a:d.getTime(), b:d.getTime()+7*864e5, label:d.toLocaleDateString(undefined,{month:'short',day:'numeric'})};
+  } else { // week — 7 days (Mon–Sun) of the selected week
+    const wkStart=startOfWeek(now); wkStart.setDate(wkStart.getDate()+weekOffset*7);
+    const dn=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    buckets=[...Array(7)].map((_,i)=>{
+      const d=new Date(wkStart); d.setDate(d.getDate()+i); const a=d.getTime();
+      return {a, b:a+864e5, label:dn[i]};
     });
-    limit=S.weekly; unitWord='week'; limitWord='weekly'; labelEvery=2;
-    sub=`${new Date(buckets[0].a).toLocaleDateString(undefined,{month:'short',day:'numeric'})} – now · limit ${S.weekly}/wk`;
+    limit=S.daily; unitWord='day'; overLabel='Over daily target'; labelEvery=1;
+    const wEnd=new Date(wkStart); wEnd.setDate(wEnd.getDate()+6);
+    sub=`limit ${S.daily}/day`;
+    // week navigation controls
+    const fmtD=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    $("#weekLabel").textContent = weekOffset===0 ? "This week" : `${fmtD(wkStart)} – ${fmtD(wEnd)}`;
+    $("#weekNext").disabled = weekOffset>=0;
   }
+  $("#weekNav").hidden = trendMode!=='week';
 
   const vals=buckets.map(bk=> sum(ents.filter(e=>e.ts>=bk.a && e.ts<bk.b), stdOf));
-  // week: scale relative to the weekly limit (shows how close you run to it).
-  // month/year: scale to the tallest bar so the chart fills nicely — the red
-  // over-limit colour still flags any bucket that exceeds its pro-rated limit.
+  // week: scale relative to the daily target. month/year: scale to the tallest
+  // bar so the chart fills nicely — red over-limit colour still flags breaches.
   const mx=Math.max(...vals, trendMode==='week'?limit:0, 1);
   $("#weeksBars").innerHTML=buckets.map((bk,i)=>{
     const v=vals[i], h=Math.max(3, v/mx*100), over=v>limit;
@@ -1297,13 +1318,16 @@ function renderConsumption(){
   }).join("");
   $("#consumeSub").textContent=sub;
   $("#legendUnit").textContent=`Standard drinks / ${unitWord}`;
-  $("#legendOver").textContent=`Over ${limitWord} limit`;
+  $("#legendOver").textContent=overLabel;
 }
 $$("#consumeRange .seg").forEach(b=>b.onclick=()=>{
   trendMode=b.dataset.mode;
+  weekOffset=0;   // start from the current week each time
   $$("#consumeRange .seg").forEach(x=>x.classList.toggle('sel', x===b));
   renderConsumption();
 });
+$("#weekPrev").onclick=()=>{ weekOffset-=1; renderConsumption(); };
+$("#weekNext").onclick=()=>{ if(weekOffset<0){ weekOffset+=1; renderConsumption(); } };
 
 // ---------- trends (consumption over time) ----------
 function renderTrends(){
