@@ -327,6 +327,16 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 .entry .emo svg.ico{width:22px;height:22px;stroke:var(--muted)}
 .syncLabel{margin-left:5px}
 
+/* editing banner + edit button on check-ins */
+.editbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0B0B0B;color:#fff;border-radius:12px;padding:10px 8px 10px 14px;margin-bottom:14px;font-size:13.5px;font-weight:600}
+.editbar[hidden]{display:none}
+.editbar b{font-weight:700}
+.editbar button{background:#fff;color:#0B0B0B;border:none;border-radius:999px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.entryActions{display:flex;gap:2px;justify-content:flex-end}
+.editbtn{background:none;border:none;color:var(--faint);cursor:pointer;padding:3px 5px;border-radius:8px;display:inline-flex;align-items:center}
+.editbtn:hover{color:#0B0B0B;background:#ECECEF}
+.editbtn svg.ico{width:15px;height:15px}
+
 /* segmented range toggle (Week / Month / Year) */
 .segmented{display:inline-flex;gap:3px;background:#F0F0F2;border-radius:999px;padding:3px;margin-bottom:14px}
 .seg{border:none;background:none;font:inherit;font-size:13px;font-weight:600;color:#6E6E78;padding:6px 16px;border-radius:999px;cursor:pointer;transition:.15s}
@@ -399,6 +409,10 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
   <section id="tab-log">
     <div class="card">
       <h2>Check in a beer <span class="sub">rate what you're drinking</span></h2>
+      <div id="editBanner" class="editbar" hidden>
+        <span>Editing <b id="editName"></b></span>
+        <button type="button" id="editCancel">Cancel</button>
+      </div>
 
       <div class="grid2">
         <div class="field">
@@ -657,6 +671,7 @@ let store = load();
 let curRating = 0;
 let curHops = [];
 let curPhoto = null;
+let editingId = null;   // id of the check-in currently being edited (null = new check-in)
 
 function normalize(d){
   d = d || {};
@@ -754,6 +769,7 @@ const ICONS = {
   dumbbell: svgIco('<path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/>'),
   star: svgIco('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
   lock: svgIco('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  edit: svgIco('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
 };
 function initIcons(){
   $(".logo").innerHTML = ICONS.beer;
@@ -1044,7 +1060,7 @@ function computeWhen(){
   return dt.getTime();
 }
 
-// ---------- check in ----------
+// ---------- check in (also handles saving edits) ----------
 $("#saveBtn").onclick=()=>{
   if($("#f-hop").value.trim()){ const v=$("#f-hop").value.trim(); if(!curHops.some(x=>x.toLowerCase()===v.toLowerCase())) toggleHop(v); else $("#f-hop").value=""; }
   if(!styleValue && $("#f-style").value.trim()) selectStyle($("#f-style").value.trim());
@@ -1052,19 +1068,65 @@ $("#saveBtn").onclick=()=>{
   const name=$("#f-name").value.trim();
   if(!name){ alert("What beer did you have? Add a name."); return; }
   if(!vol||abv===""||isNaN(abv)){ alert("Enter a volume and ABV%"); return; }
-  store.entries.push({
-    id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
+  const data={
     name, brewery:$("#f-brew").value.trim(), style:styleValue||"Uncategorized", hops:[...curHops],
     abv, blg:+$("#f-blg").value||null, photo:curPhoto,
     vol, cost:+$("#f-cost").value||0, rating:curRating, notes:$("#f-notes").value.trim(), ts:computeWhen()
-  });
+  };
+  if(editingId){
+    const e=store.entries.find(x=>x.id===editingId);
+    if(e) Object.assign(e, data);
+    toast("Check-in updated");
+  } else {
+    store.entries.push(Object.assign({id:Date.now()+"-"+Math.random().toString(36).slice(2,7)}, data));
+    toast("Checked in!");
+  }
   save(); refreshLists(); renderHopsList();
-  // reset
+  resetCheckinForm();
+};
+function resetCheckinForm(){
+  editingId=null;
+  $("#editBanner").hidden=true;
+  $("#saveBtn").textContent="✓ Check in";
   ["f-name","f-brew","f-abv","f-blg","f-cost","f-notes"].forEach(id=>$("#"+id).value="");
   curRating=0; paintStars(0); $("#rateNum").textContent="0";
   resetVol(500); resetWhen(); resetHops(); resetPhoto(); resetStyleSelect();
-  toast("Checked in!");
-};
+}
+$("#editCancel").onclick=resetCheckinForm;
+
+// ---------- edit an existing check-in (loads it into the form) ----------
+function setWhenDate(ts){
+  const d=new Date(ts);
+  const str=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  whenDaysAgo=null;
+  $$(".wpill").forEach(x=>x.classList.remove("sel"));
+  $('.wpill[data-custom="1"]').classList.add("sel");
+  $("#f-when").max=todayStr(); $("#f-when").hidden=false; $("#f-when").value=str;
+}
+function startEdit(id){
+  const e=store.entries.find(x=>x.id===id); if(!e) return;
+  editingId=id;
+  $("#f-name").value=e.name||"";
+  $("#f-brew").value=e.brewery||"";
+  $("#f-abv").value=e.abv||"";
+  $("#f-blg").value=e.blg||"";
+  $("#f-cost").value=e.cost||"";
+  $("#f-notes").value=e.notes||"";
+  styleValue=(e.style && e.style!=="Uncategorized")?e.style:"";
+  renderStyleChips();
+  curHops=[...(e.hops||[])]; renderHopChips();
+  if(e.photo){ curPhoto=e.photo; $("#photoImg").src=e.photo; $("#photoPreview").hidden=false; $("#photoAdd").hidden=true; }
+  else resetPhoto();
+  curRating=e.rating||0; paintStars(curRating); $("#rateNum").textContent=curRating;
+  resetVol(e.vol||500);
+  setWhenDate(e.ts);
+  updateCalc();
+  $("#editName").textContent=e.name;
+  $("#editBanner").hidden=false;
+  $("#saveBtn").textContent="✓ Save changes";
+  [...document.querySelectorAll('.tab')].find(t=>t.dataset.tab==='log').click();
+  window.scrollTo(0,0);
+}
 
 // ---------- datalists ----------
 function refreshLists(){
@@ -1332,7 +1394,10 @@ function renderHistory(){
             ${e.notes?`<div class="notes">${esc(e.notes)}</div>`:''}
           </div>
           <div class="right">
-            <button class="del" data-id="${e.id}" title="Delete">✕</button>
+            <div class="entryActions">
+              <button class="editbtn" data-edit="${e.id}" title="Edit">${ICONS.edit}</button>
+              <button class="del" data-id="${e.id}" title="Delete">✕</button>
+            </div>
             <div class="ministars">${e.rating>0?starHTML(e.rating/2,'14px'):'<span style="color:var(--faint);font-size:11px">unrated</span>'}</div>
             ${e.rating>0?`<div style="font-size:12px;color:var(--muted);font-weight:600">${fmt(e.rating)}/10</div>`:''}
           </div>
@@ -1340,9 +1405,11 @@ function renderHistory(){
     </div>`;
   }).join("");
   $$(".del").forEach(b=>b.onclick=()=>{
+    if(editingId===b.dataset.id) resetCheckinForm();   // don't leave a stale edit open
     store.entries=store.entries.filter(e=>e.id!==b.dataset.id);
     save(); refreshLists(); renderTrends();
   });
+  $$(".editbtn").forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
 }
 
 // ---------- settings ----------
