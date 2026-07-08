@@ -352,9 +352,9 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 
 /* limit threshold line on the consumption chart */
 #weeksBars{position:relative}
-.limitline{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--accent);pointer-events:none;z-index:2}
+.limitline{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--text);pointer-events:none;z-index:2}
 .limitline[hidden]{display:none}
-.limitcap{position:absolute;right:0;top:-8px;background:var(--card);padding:0 5px;font-size:10px;font-weight:700;letter-spacing:.02em;color:var(--accent);white-space:nowrap}
+.limitcap{position:absolute;right:0;top:-8px;background:var(--card);padding:0 5px;font-size:10px;font-weight:700;letter-spacing:.02em;color:var(--text);white-space:nowrap}
 
 /* ===== Mobile ===== */
 @media(max-width:560px){
@@ -1312,9 +1312,9 @@ function renderConsumption(){
   $("#weekNav").hidden = trendMode!=='week';
 
   const vals=buckets.map(bk=> sum(ents.filter(e=>e.ts>=bk.a && e.ts<bk.b), stdOf));
-  // week: scale relative to the daily target. month/year: scale to the tallest
-  // bar so the chart fills nicely — red over-limit colour still flags breaches.
-  const mx=Math.max(...vals, trendMode==='week'?limit:0, 1);
+  // scale to include the limit itself so its dashed line is always visible,
+  // not just when a bar happens to cross it.
+  const mx=Math.max(...vals, limit, 1);
   $("#weeksBars").innerHTML=buckets.map((bk,i)=>{
     const v=vals[i], h=Math.max(3, v/mx*100), over=v>limit;
     const showLbl = i%labelEvery===0 || i===buckets.length-1;
