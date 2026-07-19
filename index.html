@@ -303,6 +303,11 @@ input[type=range]::-moz-range-thumb{background:#0B0B0B;border-color:#fff}
 .typerow .track,.histrow .track{background:#ECECEF}
 .barwrap.tall{height:190px}
 .bar-lbl{min-height:15px;line-height:15px}
+/* dense day-of-month view: many thin bars, no per-bar numbers */
+.barwrap.dense{gap:3px}
+.barwrap.dense .bar{border-radius:3px 3px 2px 2px}
+.barwrap.dense .bar-val{display:none}
+@media(max-width:560px){ .barwrap.dense{gap:2px} }
 #tab-trends .grid2{gap:16px;margin-top:16px}
 #tab-trends .grid2 .card{margin-top:0}
 .photoAdd{border:1.5px dashed #D9D9DE;border-radius:16px;color:var(--muted)}
@@ -570,6 +575,12 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
       <div class="badges" id="badges"></div>
     </div>
 
+  </section>
+
+  <!-- ============ TRENDS ============ -->
+  <section id="tab-trends" hidden>
+    <div class="stats" id="trendTiles"></div>
+
     <div class="card">
       <h2>This week's pours <span class="sub" id="weekRange"></span></h2>
       <div class="barwrap" id="weekBars"></div>
@@ -588,24 +599,20 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
         <span class="pill" id="pillSpend">💸 0 total</span>
       </div>
     </div>
-  </section>
-
-  <!-- ============ TRENDS ============ -->
-  <section id="tab-trends" hidden>
-    <div class="stats" id="trendTiles"></div>
 
     <div class="card">
       <h2>Consumption over time <span class="sub" id="consumeSub"></span></h2>
       <div class="consumeControls">
         <div class="segmented" id="consumeRange">
           <button type="button" class="seg sel" data-mode="week">Week</button>
+          <button type="button" class="seg" data-mode="day">Day</button>
           <button type="button" class="seg" data-mode="month">Month</button>
           <button type="button" class="seg" data-mode="year">Year</button>
         </div>
         <div class="weeknav" id="weekNav" hidden>
-          <button type="button" id="weekPrev" aria-label="Previous week">‹</button>
+          <button type="button" id="weekPrev" aria-label="Previous period">‹</button>
           <span id="weekLabel"></span>
-          <button type="button" id="weekNext" aria-label="Next week">›</button>
+          <button type="button" id="weekNext" aria-label="Next period">›</button>
         </div>
       </div>
       <div class="barwrap tall" id="weeksBars"></div>
@@ -1217,32 +1224,6 @@ function renderDash(){
       <div class="bn">${x.name}</div><div class="bd">${x.desc}</div>
     </div>`).join("");
   $("#badgeCount").textContent=`${b.filter(x=>x.earned).length} / ${b.length} earned`;
-
-  // week bars + goal
-  const now=new Date(), wkStart=startOfWeek(now);
-  const days=[...Array(7)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()+i); return d.getTime(); });
-  const perDay=days.map(k=> ents.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+stdOf(e),0));
-  const weekTotal=perDay.reduce((a,c)=>a+c,0);
-  const todayIdx=(now.getDay()+6)%7;
-  const mx=Math.max(S.daily,...perDay,1);
-  const dn=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  $("#weekBars").innerHTML=perDay.map((v,i)=>{
-    const h=Math.max(3,v/mx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
-    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
-      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
-      <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn[i]}</div></div>`;
-  }).join("");
-  const wd=new Date(days[0]),we=new Date(days[6]);
-  $("#weekRange").textContent=`${wd.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${we.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`;
-  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), over=weekTotal>S.weekly;
-  $("#goalFill").className="goalfill"+(over?" over":""); $("#goalFill").style.width=gpct+"%";
-  $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks this week`;
-
-  const avgAbv = ents.length? ents.reduce((s,e)=>s+e.abv,0)/ents.length : 0;
-  const spend = ents.reduce((s,e)=>s+(e.cost||0),0);
-  $("#pillStreak").innerHTML=`${ICONS.flame}<span>${dryStreak()} dry days</span>`;
-  $("#pillAbv").innerHTML=`${ICONS.gauge}<span>${fmt(avgAbv)}% avg ABV</span>`;
-  $("#pillSpend").innerHTML=`${ICONS.cash}<span>${fmt(spend)} ${S.currency} all-time</span>`;
 }
 
 function computeBadges(ents,uBeers,uBrews,uStyles){
@@ -1270,15 +1251,27 @@ function dryStreak(){
   return Math.max(0,Math.floor((dayKey(Date.now())-dayKey(last))/864e5));
 }
 
-// ---------- consumption chart with Week / Month / Year switch ----------
+// ---------- consumption chart with Week / Day / Month / Year switch ----------
 let trendMode = 'week';
-let weekOffset = 0;   // 0 = current week, -1 = last week, …
+let weekOffset = 0;    // 0 = current week, -1 = last week, … (week mode)
+let monthOffset = 0;   // 0 = current month, -1 = last month, … (day mode)
 function renderConsumption(){
   const S=store.settings, ents=store.entries, now=new Date();
   const sum=(a,f)=>a.reduce((s,e)=>s+f(e),0);
   let buckets, limit, unitWord, overLabel, labelEvery, sub;
 
-  if(trendMode==='month'){
+  if(trendMode==='day'){ // every day of the selected month
+    const mStart=new Date(now.getFullYear(), now.getMonth()+monthOffset, 1);
+    const daysInMonth=new Date(mStart.getFullYear(), mStart.getMonth()+1, 0).getDate();
+    buckets=[...Array(daysInMonth)].map((_,i)=>{
+      const d=new Date(mStart.getFullYear(), mStart.getMonth(), i+1); const a=d.getTime();
+      return {a, b:a+864e5, label:String(i+1)};
+    });
+    limit=S.daily; unitWord='day'; overLabel='Over daily target'; labelEvery=5;
+    sub=`limit ${S.daily}/day`;
+    $("#weekLabel").textContent = monthOffset===0 ? "This month" : mStart.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    $("#weekNext").disabled = monthOffset>=0;
+  } else if(trendMode==='month'){
     buckets=[...Array(12)].map((_,i)=>{
       const d=new Date(now.getFullYear(),now.getMonth()-(11-i),1);
       const e=new Date(now.getFullYear(),now.getMonth()-(11-i)+1,1);
@@ -1311,7 +1304,8 @@ function renderConsumption(){
     $("#weekLabel").textContent = weekOffset===0 ? "This week" : `${fmtD(wkStart)} – ${fmtD(wEnd)}`;
     $("#weekNext").disabled = weekOffset>=0;
   }
-  $("#weekNav").hidden = trendMode!=='week';
+  $("#weekNav").hidden = !(trendMode==='week' || trendMode==='day');
+  $("#weeksBars").classList.toggle('dense', trendMode==='day');
 
   const vals=buckets.map(bk=> sum(ents.filter(e=>e.ts>=bk.a && e.ts<bk.b), stdOf));
   // scale to include the limit itself so its dashed line is always visible,
@@ -1348,12 +1342,15 @@ function positionLimitLine(limit, mx, vals){
 }
 $$("#consumeRange .seg").forEach(b=>b.onclick=()=>{
   trendMode=b.dataset.mode;
-  weekOffset=0;   // start from the current week each time
+  weekOffset=0; monthOffset=0;   // start from the current period each time
   $$("#consumeRange .seg").forEach(x=>x.classList.toggle('sel', x===b));
   renderConsumption();
 });
-$("#weekPrev").onclick=()=>{ weekOffset-=1; renderConsumption(); };
-$("#weekNext").onclick=()=>{ if(weekOffset<0){ weekOffset+=1; renderConsumption(); } };
+$("#weekPrev").onclick=()=>{ if(trendMode==='day') monthOffset-=1; else weekOffset-=1; renderConsumption(); };
+$("#weekNext").onclick=()=>{
+  if(trendMode==='day'){ if(monthOffset<0){ monthOffset+=1; renderConsumption(); } }
+  else { if(weekOffset<0){ weekOffset+=1; renderConsumption(); } }
+};
 // keep the limit line aligned when the viewport changes
 let _limitResizeT;
 window.addEventListener('resize',()=>{ clearTimeout(_limitResizeT); _limitResizeT=setTimeout(()=>{ if(!$("#tab-trends").hidden) renderConsumption(); },150); });
@@ -1383,6 +1380,32 @@ function renderTrends(){
     <div class="stat"><div class="k">Spent · mo</div><div class="v">${fmt(spendThis)}<small> ${S.currency}</small></div><div class="d">${trendD(spendThis,spendLast)}</div></div>
     <div class="stat"><div class="k">Avg ABV · mo</div><div class="v">${fmt(abvThis)}<small>%</small></div><div class="d flat">this month</div></div>`;
 
+  // this week's pours: daily bars + weekly goal progress + streak/ABV/spend pills
+  const wkStart=startOfWeek(now);
+  const days=[...Array(7)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()+i); return d.getTime(); });
+  const perDay=days.map(k=> ents.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+stdOf(e),0));
+  const weekTotal=perDay.reduce((a,c)=>a+c,0);
+  const todayIdx=(now.getDay()+6)%7;
+  const wmx=Math.max(S.daily,...perDay,1);
+  const dn7=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  $("#weekBars").innerHTML=perDay.map((v,i)=>{
+    const h=Math.max(3,v/wmx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
+    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
+      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
+      <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn7[i]}</div></div>`;
+  }).join("");
+  const wd=new Date(days[0]),we=new Date(days[6]);
+  $("#weekRange").textContent=`${wd.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${we.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`;
+  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), goalOver=weekTotal>S.weekly;
+  $("#goalFill").className="goalfill"+(goalOver?" over":""); $("#goalFill").style.width=gpct+"%";
+  $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks this week`;
+
+  const avgAbvAll = ents.length? ents.reduce((s,e)=>s+e.abv,0)/ents.length : 0;
+  const spendAll = ents.reduce((s,e)=>s+(e.cost||0),0);
+  $("#pillStreak").innerHTML=`${ICONS.flame}<span>${dryStreak()} dry days</span>`;
+  $("#pillAbv").innerHTML=`${ICONS.gauge}<span>${fmt(avgAbvAll)}% avg ABV</span>`;
+  $("#pillSpend").innerHTML=`${ICONS.cash}<span>${fmt(spendAll)} ${S.currency} all-time</span>`;
+
   // consumption over time — Week / Month / Year (driven by the segmented toggle)
   renderConsumption();
 
@@ -1406,8 +1429,7 @@ function renderTrends(){
       <div class="track"><div class="fill2" style="width:${v/dmx*100}%"></div></div>
       <div class="pc">${fmt(v)}</div></div>`).join("");
 
-  // strength — avg ABV per week (last 8)
-  const wkStart=startOfWeek(now);
+  // strength — avg ABV per week (last 8) — reuses wkStart from the week-pours block above
   const w8=[...Array(8)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()-(7-i)*7); return d; });
   const abvW=w8.map(ws=>{ const a=ws.getTime(),b=a+7*864e5; const es=ents.filter(e=>e.ts>=a&&e.ts<b); return es.length? sum(es,e=>e.abv)/es.length:0; });
   const amx=Math.max(...abvW,1);
