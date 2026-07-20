@@ -349,7 +349,7 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
 .segmented{display:inline-flex;gap:3px;background:#F0F0F2;border-radius:999px;padding:3px}
 .weeknav{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text)}
 .weeknav[hidden]{display:none}
-.weeknav #weekLabel{min-width:112px;text-align:center}
+.weeknav #weekLabel,.weeknav #pourLabel{min-width:112px;text-align:center}
 .weeknav button{width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:#fff;color:#0B0B0B;font-size:16px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
 .weeknav button:hover:not(:disabled){border-color:#0B0B0B}
 .weeknav button:disabled{opacity:.35;cursor:default}
@@ -582,7 +582,14 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
     <div class="stats" id="trendTiles"></div>
 
     <div class="card">
-      <h2>This week's pours <span class="sub" id="weekRange"></span></h2>
+      <div class="consumeControls">
+        <h2 style="margin:0">This week's pours</h2>
+        <div class="weeknav" id="pourNav">
+          <button type="button" id="pourPrev" aria-label="Previous week">‹</button>
+          <span id="pourLabel"></span>
+          <button type="button" id="pourNext" aria-label="Next week">›</button>
+        </div>
+      </div>
       <div class="barwrap" id="weekBars"></div>
       <div class="legend">
         <div><span class="dot" style="background:linear-gradient(180deg,var(--accent),var(--amber))"></span>Standard drinks / day</div>
@@ -604,8 +611,7 @@ svg.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stro
       <h2>Consumption over time <span class="sub" id="consumeSub"></span></h2>
       <div class="consumeControls">
         <div class="segmented" id="consumeRange">
-          <button type="button" class="seg sel" data-mode="week">Week</button>
-          <button type="button" class="seg" data-mode="day">Day</button>
+          <button type="button" class="seg sel" data-mode="day">Day</button>
           <button type="button" class="seg" data-mode="month">Month</button>
           <button type="button" class="seg" data-mode="year">Year</button>
         </div>
@@ -1251,9 +1257,8 @@ function dryStreak(){
   return Math.max(0,Math.floor((dayKey(Date.now())-dayKey(last))/864e5));
 }
 
-// ---------- consumption chart with Week / Day / Month / Year switch ----------
-let trendMode = 'week';
-let weekOffset = 0;    // 0 = current week, -1 = last week, … (week mode)
+// ---------- consumption chart with Day / Month / Year switch ----------
+let trendMode = 'day';
 let monthOffset = 0;   // 0 = current month, -1 = last month, … (day mode)
 function renderConsumption(){
   const S=store.settings, ents=store.entries, now=new Date();
@@ -1289,22 +1294,8 @@ function renderConsumption(){
     });
     limit=S.weekly*52; unitWord='year'; overLabel='Over yearly limit'; labelEvery=1;
     sub=`${buckets[0].label} – ${buckets[n-1].label} · limit ${Math.round(limit)}/yr`;
-  } else { // week — 7 days (Mon–Sun) of the selected week
-    const wkStart=startOfWeek(now); wkStart.setDate(wkStart.getDate()+weekOffset*7);
-    const dn=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-    buckets=[...Array(7)].map((_,i)=>{
-      const d=new Date(wkStart); d.setDate(d.getDate()+i); const a=d.getTime();
-      return {a, b:a+864e5, label:dn[i]};
-    });
-    limit=S.daily; unitWord='day'; overLabel='Over daily target'; labelEvery=1;
-    const wEnd=new Date(wkStart); wEnd.setDate(wEnd.getDate()+6);
-    sub=`limit ${S.daily}/day`;
-    // week navigation controls
-    const fmtD=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
-    $("#weekLabel").textContent = weekOffset===0 ? "This week" : `${fmtD(wkStart)} – ${fmtD(wEnd)}`;
-    $("#weekNext").disabled = weekOffset>=0;
   }
-  $("#weekNav").hidden = !(trendMode==='week' || trendMode==='day');
+  $("#weekNav").hidden = trendMode!=='day';
   $("#weeksBars").classList.toggle('dense', trendMode==='day');
 
   const vals=buckets.map(bk=> sum(ents.filter(e=>e.ts>=bk.a && e.ts<bk.b), stdOf));
@@ -1342,18 +1333,42 @@ function positionLimitLine(limit, mx, vals){
 }
 $$("#consumeRange .seg").forEach(b=>b.onclick=()=>{
   trendMode=b.dataset.mode;
-  weekOffset=0; monthOffset=0;   // start from the current period each time
+  monthOffset=0;   // start from the current month each time
   $$("#consumeRange .seg").forEach(x=>x.classList.toggle('sel', x===b));
   renderConsumption();
 });
-$("#weekPrev").onclick=()=>{ if(trendMode==='day') monthOffset-=1; else weekOffset-=1; renderConsumption(); };
-$("#weekNext").onclick=()=>{
-  if(trendMode==='day'){ if(monthOffset<0){ monthOffset+=1; renderConsumption(); } }
-  else { if(weekOffset<0){ weekOffset+=1; renderConsumption(); } }
-};
+$("#weekPrev").onclick=()=>{ monthOffset-=1; renderConsumption(); };
+$("#weekNext").onclick=()=>{ if(monthOffset<0){ monthOffset+=1; renderConsumption(); } };
 // keep the limit line aligned when the viewport changes
 let _limitResizeT;
 window.addEventListener('resize',()=>{ clearTimeout(_limitResizeT); _limitResizeT=setTimeout(()=>{ if(!$("#tab-trends").hidden) renderConsumption(); },150); });
+
+// ---------- "This week's pours" card (daily bars + weekly goal), pageable by week ----------
+let pourWeekOffset = 0;   // 0 = current week, -1 = last week, …
+function renderWeekPours(){
+  const S=store.settings, ents=store.entries, now=new Date();
+  const wkStart=startOfWeek(now); wkStart.setDate(wkStart.getDate()+pourWeekOffset*7);
+  const days=[...Array(7)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()+i); return d.getTime(); });
+  const perDay=days.map(k=> ents.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+stdOf(e),0));
+  const weekTotal=perDay.reduce((a,c)=>a+c,0);
+  const todayIdx = pourWeekOffset===0 ? (now.getDay()+6)%7 : -1;   // highlight today only on the current week
+  const wmx=Math.max(S.daily,...perDay,1);
+  const dn7=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  $("#weekBars").innerHTML=perDay.map((v,i)=>{
+    const h=Math.max(3,v/wmx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
+    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
+      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
+      <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn7[i]}</div></div>`;
+  }).join("");
+  const fmtD=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  $("#pourLabel").textContent = pourWeekOffset===0 ? "This week" : `${fmtD(new Date(days[0]))} – ${fmtD(new Date(days[6]))}`;
+  $("#pourNext").disabled = pourWeekOffset>=0;
+  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), goalOver=weekTotal>S.weekly;
+  $("#goalFill").className="goalfill"+(goalOver?" over":""); $("#goalFill").style.width=gpct+"%";
+  $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks`;
+}
+$("#pourPrev").onclick=()=>{ pourWeekOffset-=1; renderWeekPours(); };
+$("#pourNext").onclick=()=>{ if(pourWeekOffset<0){ pourWeekOffset+=1; renderWeekPours(); } };
 
 // ---------- trends (consumption over time) ----------
 function renderTrends(){
@@ -1380,25 +1395,8 @@ function renderTrends(){
     <div class="stat"><div class="k">Spent · mo</div><div class="v">${fmt(spendThis)}<small> ${S.currency}</small></div><div class="d">${trendD(spendThis,spendLast)}</div></div>
     <div class="stat"><div class="k">Avg ABV · mo</div><div class="v">${fmt(abvThis)}<small>%</small></div><div class="d flat">this month</div></div>`;
 
-  // this week's pours: daily bars + weekly goal progress + streak/ABV/spend pills
-  const wkStart=startOfWeek(now);
-  const days=[...Array(7)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()+i); return d.getTime(); });
-  const perDay=days.map(k=> ents.filter(e=>dayKey(e.ts)===k).reduce((s,e)=>s+stdOf(e),0));
-  const weekTotal=perDay.reduce((a,c)=>a+c,0);
-  const todayIdx=(now.getDay()+6)%7;
-  const wmx=Math.max(S.daily,...perDay,1);
-  const dn7=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-  $("#weekBars").innerHTML=perDay.map((v,i)=>{
-    const h=Math.max(3,v/wmx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
-    return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
-      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
-      <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn7[i]}</div></div>`;
-  }).join("");
-  const wd=new Date(days[0]),we=new Date(days[6]);
-  $("#weekRange").textContent=`${wd.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${we.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`;
-  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), goalOver=weekTotal>S.weekly;
-  $("#goalFill").className="goalfill"+(goalOver?" over":""); $("#goalFill").style.width=gpct+"%";
-  $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks this week`;
+  // this week's pours — own function so it can page between weeks independently
+  renderWeekPours();
 
   const avgAbvAll = ents.length? ents.reduce((s,e)=>s+e.abv,0)/ents.length : 0;
   const spendAll = ents.reduce((s,e)=>s+(e.cost||0),0);
@@ -1429,7 +1427,8 @@ function renderTrends(){
       <div class="track"><div class="fill2" style="width:${v/dmx*100}%"></div></div>
       <div class="pc">${fmt(v)}</div></div>`).join("");
 
-  // strength — avg ABV per week (last 8) — reuses wkStart from the week-pours block above
+  // strength — avg ABV per week (last 8)
+  const wkStart=startOfWeek(now);
   const w8=[...Array(8)].map((_,i)=>{ const d=new Date(wkStart); d.setDate(d.getDate()-(7-i)*7); return d; });
   const abvW=w8.map(ws=>{ const a=ws.getTime(),b=a+7*864e5; const es=ents.filter(e=>e.ts>=a&&e.ts<b); return es.length? sum(es,e=>e.abv)/es.length:0; });
   const amx=Math.max(...abvW,1);
