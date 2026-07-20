@@ -216,7 +216,6 @@
 
   .goalbar{height:26px;background:var(--bg2);border-radius:9px;overflow:hidden;position:relative;border:1px solid var(--line)}
   .goalfill{height:100%;border-radius:8px;transition:.4s;background:linear-gradient(90deg,var(--good),#a6e09a)}
-  .goalfill.over{background:linear-gradient(90deg,var(--warn),var(--bad))}
   .goaltxt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700}
   .pill{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:5px 12px;font-size:12.5px;color:var(--muted);font-weight:600}
 
@@ -294,7 +293,6 @@ input[type=range]::-moz-range-thumb{background:#0B0B0B;border-color:#fff}
 .badge.earned{border-color:#0B0B0B;box-shadow:none}
 .goalbar{background:#ECECEF;border:none}
 .goalfill{background:#0B0B0B}
-.goalfill.over{background:#F04438}
 .bar{background:#0B0B0B}
 .bar.zero{background:#E4E4E7}
 .bar.over{background:#F04438}
@@ -1355,16 +1353,31 @@ function renderWeekPours(){
   const wmx=Math.max(S.daily,...perDay,1);
   const dn7=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
   $("#weekBars").innerHTML=perDay.map((v,i)=>{
-    const h=Math.max(3,v/wmx*100), cls=v===0?"zero":v>S.daily?"over":"", today=i===todayIdx;
+    const h=Math.max(3,v/wmx*100), today=i===todayIdx;
+    let cls=v===0?"zero":"", bg="";
+    if(v>S.daily){
+      // split fill: black up to the daily target, red only for the part over it
+      const splitPct=Math.min(100,(S.daily/v)*100);
+      bg=`background:linear-gradient(to top, var(--text) 0%, var(--text) ${splitPct}%, var(--bad) ${splitPct}%, var(--bad) 100%);`;
+    }
     return `<div class="bar-col"><div class="bar-val">${v>0?fmt(v):''}</div>
-      <div class="bar ${cls}" style="height:${h}%;${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
+      <div class="bar ${cls}" style="height:${h}%;${bg}${today?'outline:2px solid var(--accent);outline-offset:2px':''}"></div>
       <div class="bar-lbl" style="${today?'color:var(--accent)':''}">${dn7[i]}</div></div>`;
   }).join("");
   const fmtD=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
   $("#pourLabel").textContent = pourWeekOffset===0 ? "This week" : `${fmtD(new Date(days[0]))} – ${fmtD(new Date(days[6]))}`;
   $("#pourNext").disabled = pourWeekOffset>=0;
-  const gpct=Math.min(100,S.weekly?weekTotal/S.weekly*100:0), goalOver=weekTotal>S.weekly;
-  $("#goalFill").className="goalfill"+(goalOver?" over":""); $("#goalFill").style.width=gpct+"%";
+  // goal bar: fills relative to whichever is bigger (limit or actual), so being
+  // over shows as a red cap at the end instead of turning the whole bar red
+  const effMax=Math.max(weekTotal,S.weekly,1);
+  const gpct=Math.min(100,weekTotal/effMax*100);
+  let goalBg="";
+  if(weekTotal>S.weekly){
+    const splitPct=Math.min(100,(S.weekly/weekTotal)*100);
+    goalBg=`background:linear-gradient(to right, var(--text) 0%, var(--text) ${splitPct}%, var(--bad) ${splitPct}%, var(--bad) 100%);`;
+  }
+  $("#goalFill").className="goalfill";
+  $("#goalFill").style.cssText=`width:${gpct}%;${goalBg}`;
   $("#goalTxt").textContent=`${fmt(weekTotal)} / ${S.weekly} standard drinks`;
 }
 $("#pourPrev").onclick=()=>{ pourWeekOffset-=1; renderWeekPours(); };
